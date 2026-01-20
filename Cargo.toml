@@ -1,0 +1,89 @@
+[package]
+name = "nginx-discovery"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70.0"
+authors = ["Ajit Kumar <ajitkumar.pu@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "Discover and introspect NGINX configurations with ease"
+documentation = "https://docs.rs/nginx-discovery"
+homepage = "https://github.com/urwithajit9/nginx-discovery"
+repository = "https://github.com/urwithajit9/nginx-discovery"
+readme = "README.md"
+keywords = ["nginx", "config", "parser", "discovery", "introspection"]
+categories = ["config", "parsing", "web-programming", "development-tools"]
+exclude = [
+    ".github/",
+    "tests/fixtures/large/",
+    "*.log",
+]
+
+[dependencies]
+# Error handling
+thiserror = "1.0"
+
+# Optional - System interaction
+which = { version = "6.0", optional = true }
+
+# Optional - Serialization
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+serde_yaml = { version = "0.9", optional = true }
+
+# Optional - Include resolution
+walkdir = { version = "2.4", optional = true }
+
+# Optional - CLI
+clap = { version = "4.5", features = ["derive", "cargo"], optional = true }
+colored = { version = "2.1", optional = true }
+anyhow = { version = "1.0", optional = true }
+dialoguer = { version = "0.11", optional = true }
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+criterion = "0.5"
+tempfile = "3.8"
+indoc = "2.0"
+
+[features]
+default = ["system"]
+
+# Enable system interaction (nginx -T, binary detection)
+system = ["dep:which"]
+
+# Serialization support
+serde = ["dep:serde", "dep:serde_json", "dep:serde_yaml"]
+
+# Visitor pattern support
+visitor = []
+
+# Include directive resolution
+includes = ["dep:walkdir"]
+
+# CLI binary and all necessary features
+cli = [
+    "dep:clap",
+    "dep:colored",
+    "dep:anyhow",
+    "dep:dialoguer",
+    "system",
+    "serde",
+]
+
+[[bench]]
+name = "parser_bench"
+harness = false
+
+[[bin]]
+name = "nginx-discover"
+path = "src/bin/nginx-discover.rs"
+required-features = ["cli"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
