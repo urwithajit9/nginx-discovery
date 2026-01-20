@@ -29,11 +29,9 @@ server {
                 if token.kind == nginx_discovery::parser::TokenKind::Eof {
                     break;
                 }
-                println!("{:3}: {:?} at line {}, col {}",
-                    i,
-                    token.kind,
-                    token.span.line,
-                    token.span.col
+                println!(
+                    "{:3}: {:?} at line {}, col {}",
+                    i, token.kind, token.span.line, token.span.col
                 );
             }
         }

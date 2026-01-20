@@ -46,7 +46,7 @@ impl<'a> Lexer<'a> {
 
         let kind = match ch {
             // Comments
-            '#' => self.lex_comment()?,
+            '#' => self.lex_comment(),
 
             // Braces
             '{' => {
@@ -72,8 +72,8 @@ impl<'a> Lexer<'a> {
             '$' => self.lex_variable()?,
 
             // Numbers or words
-            _ if ch.is_ascii_digit() => self.lex_number()?,
-            _ if is_word_start(ch) => self.lex_word()?,
+            _ if ch.is_ascii_digit() => self.lex_number(),
+            _ if is_word_start(ch) => self.lex_word(),
 
             _ => {
                 return Err(Error::syntax(
@@ -126,7 +126,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Lex a comment
-    fn lex_comment(&mut self) -> Result<TokenKind> {
+    fn lex_comment(&mut self) -> TokenKind {
         self.advance(); // Skip '#'
 
         let start = self.pos;
@@ -135,7 +135,7 @@ impl<'a> Lexer<'a> {
         }
 
         let comment = self.input[start..self.pos].trim().to_string();
-        Ok(TokenKind::Comment(comment))
+        TokenKind::Comment(comment)
     }
 
     /// Lex a quoted string
@@ -227,19 +227,20 @@ impl<'a> Lexer<'a> {
     }
 
     /// Lex a number
-    fn lex_number(&mut self) -> Result<TokenKind> {
+    fn lex_number(&mut self) -> TokenKind {
         let start = self.pos;
 
-        while !self.is_eof() && (self.current_char().is_ascii_digit() || self.current_char() == '.') {
+        while !self.is_eof() && (self.current_char().is_ascii_digit() || self.current_char() == '.')
+        {
             self.advance();
         }
 
         let number = self.input[start..self.pos].to_string();
-        Ok(TokenKind::Number(number))
+        TokenKind::Number(number)
     }
 
     /// Lex a word (identifier)
-    fn lex_word(&mut self) -> Result<TokenKind> {
+    fn lex_word(&mut self) -> TokenKind {
         let start = self.pos;
 
         while !self.is_eof() && is_word_char(self.current_char()) {
@@ -247,7 +248,7 @@ impl<'a> Lexer<'a> {
         }
 
         let word = self.input[start..self.pos].to_string();
-        Ok(TokenKind::Word(word))
+        TokenKind::Word(word)
     }
 
     /// Make a token at current position
@@ -282,15 +283,10 @@ fn is_word_start(ch: char) -> bool {
     ch.is_ascii_alphabetic() || ch == '_' || ch == '/' || ch == '.'
 }
 
-
 /// Check if character can be part of a word
 fn is_word_char(ch: char) -> bool {
-    ch.is_ascii_alphanumeric()
-        || ch == '_'
-        || ch == '-'
-        || ch == '/'
-        || ch == '.'
-        || ch == ':'  // Add this line for URLs like http://
+    ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' || ch == '/' || ch == '.' || ch == ':'
+    // Add this line for URLs like http://
 }
 
 #[cfg(test)]
@@ -347,7 +343,10 @@ mod tests {
         let mut lexer = Lexer::new("# This is a comment\nuser nginx;");
         let tokens = lexer.tokenize().unwrap();
 
-        assert_eq!(tokens[0].kind, TokenKind::Comment("This is a comment".to_string()));
+        assert_eq!(
+            tokens[0].kind,
+            TokenKind::Comment("This is a comment".to_string())
+        );
         assert_eq!(tokens[1].kind, TokenKind::Word("user".to_string()));
     }
 

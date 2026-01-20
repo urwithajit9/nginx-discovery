@@ -92,8 +92,8 @@ impl std::fmt::Display for TokenKind {
             Self::String(s) => write!(f, "string \"{s}\""),
             Self::Number(s) => write!(f, "number '{s}'"),
             Self::Variable(s) => write!(f, "variable '${s}'"),
-            Self::LeftBrace => write!(f, "'{{'"),      // Changed: double {{ to escape
-            Self::RightBrace => write!(f, "'}}'"),     // Changed: double }} to escape
+            Self::LeftBrace => write!(f, "'{{'"), // Changed: double {{ to escape
+            Self::RightBrace => write!(f, "'}}'"), // Changed: double }} to escape
             Self::Semicolon => write!(f, "';'"),
             Self::Comment(s) => write!(f, "comment '# {s}'"),
             Self::Eof => write!(f, "end of file"),
@@ -107,10 +107,7 @@ mod tests {
 
     #[test]
     fn test_token_creation() {
-        let token = Token::new(
-            TokenKind::Word("server".to_string()),
-            Span::new(0, 6, 1, 1),
-        );
+        let token = Token::new(TokenKind::Word("server".to_string()), Span::new(0, 6, 1, 1));
         assert_eq!(token.kind, TokenKind::Word("server".to_string()));
     }
 
