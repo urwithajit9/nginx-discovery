@@ -1,11 +1,11 @@
 //! NGINX configuration parser
 
 mod lexer;
-mod parser;
+mod parse;
 mod token;
 
 pub use lexer::Lexer;
-pub use parser::Parser;
+pub use parse::Parser;
 pub use token::{Token, TokenKind};
 
 use crate::ast::Config;

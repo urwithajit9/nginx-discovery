@@ -101,9 +101,8 @@ impl Parser {
         let token = self.current();
 
         let value = match &token.kind {
-            TokenKind::Word(s) => Value::literal(s.clone()),
             TokenKind::String(s) => Value::single_quoted(s.clone()),
-            TokenKind::Number(s) => Value::literal(s.clone()),
+            TokenKind::Word(s) | TokenKind::Number(s) => Value::literal(s.clone()),
             TokenKind::Variable(s) => Value::variable(s.clone()),
             _ => {
                 return Err(Error::syntax(
@@ -122,18 +121,17 @@ impl Parser {
 
     /// Expect a specific token kind
     fn expect(&mut self, kind: &TokenKind) -> Result<Token> {
-        let token = self.current();
+        let token = self.current().clone(); // Clone here
 
         if std::mem::discriminant(&token.kind) == std::mem::discriminant(kind) {
-            let token = self.current().clone();
             self.advance();
-            Ok(token.clone())
+            Ok(token) // No need to clone again
         } else {
             Err(Error::syntax(
-                format!("unexpected token"),
+                "unexpected token".to_string(),
                 token.span.line,
                 token.span.col,
-                Some(format!("{}", kind)),
+                Some(format!("{kind}")),
                 Some(format!("{}", token.kind)),
             ))
         }
@@ -160,7 +158,9 @@ impl Parser {
 
     /// Get current token
     fn current(&self) -> &Token {
-        self.tokens.get(self.pos).unwrap_or(&self.tokens[self.tokens.len() - 1])
+        self.tokens
+            .get(self.pos)
+            .unwrap_or(&self.tokens[self.tokens.len() - 1])
     }
 
     /// Check if current token matches a kind
