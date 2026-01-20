@@ -75,6 +75,7 @@
 // Public modules
 pub mod ast;
 pub mod error;
+pub mod error_builder;
 pub mod extract;
 pub mod parser;
 
@@ -104,6 +105,7 @@ pub use parser::parse;
 pub mod prelude {
     pub use crate::discovery::NginxDiscovery;
     pub use crate::error::{Error, Result};
+    pub use crate::error_builder::ErrorBuilder;
     // pub use crate::types::*;
 }
 
