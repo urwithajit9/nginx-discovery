@@ -1,14 +1,16 @@
 //! NGINX configuration parser
-//!
-//! This module will contain the lexer and parser implementation.
+
+mod lexer;
+mod token;
+
+pub use lexer::Lexer;
+pub use token::{Token, TokenKind};
 
 use crate::ast::Config;
 use crate::error::Result;
 
 /// Parse NGINX configuration from text
-///
-/// This is a stub implementation. Full parser coming soon.
 pub fn parse(_input: &str) -> Result<Config> {
-    // TODO: Implement parser
+    // TODO: Implement full parser in Day 4
     Ok(Config::new())
 }

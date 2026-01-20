@@ -106,6 +106,7 @@ pub mod prelude {
     pub use crate::discovery::NginxDiscovery;
     pub use crate::error::{Error, Result};
     pub use crate::error_builder::ErrorBuilder;
+    pub use crate::parser::{Lexer, Token, TokenKind};
     // pub use crate::types::*;
 }
 
