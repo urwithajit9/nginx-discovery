@@ -1,5 +1,4 @@
 //! Parser for NGINX configuration files
-
 use crate::ast::{Config, Directive, Value};
 use crate::error::{Error, Result};
 // use crate::prelude::ErrorBuilder;
@@ -15,6 +14,10 @@ pub struct Parser {
 
 impl Parser {
     /// Create a new parser from source text
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if tokenization fails.
     pub fn new(input: &str) -> Result<Self> {
         let mut lexer = Lexer::new(input);
         let tokens = lexer.tokenize()?;
@@ -23,6 +26,13 @@ impl Parser {
     }
 
     /// Parse the configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Unexpected tokens are encountered
+    /// - Directives are malformed
+    /// - Blocks are not properly closed
     pub fn parse(&mut self) -> Result<Config> {
         let mut directives = Vec::new();
 
@@ -228,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_parse_nested_blocks() {
-        let input = r#"
+        let input = r"
 http {
     server {
         listen 80;
@@ -237,7 +247,7 @@ http {
         }
     }
 }
-"#;
+";
         let mut parser = Parser::new(input).unwrap();
         let config = parser.parse().unwrap();
 
@@ -254,10 +264,10 @@ http {
 
     #[test]
     fn test_parse_with_comments() {
-        let input = r#"
+        let input = r"
 # Main config
 user nginx;  # Run as nginx
-"#;
+";
         let mut parser = Parser::new(input).unwrap();
         let config = parser.parse().unwrap();
 
