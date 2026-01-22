@@ -75,6 +75,7 @@
 // Public modules
 pub mod ast;
 pub mod error;
+pub mod error_builder;
 pub mod extract;
 pub mod parser;
 
@@ -104,7 +105,9 @@ pub use parser::parse;
 pub mod prelude {
     pub use crate::discovery::NginxDiscovery;
     pub use crate::error::{Error, Result};
-    // pub use crate::types::*;
+    pub use crate::error_builder::ErrorBuilder;
+    pub use crate::parser::{Lexer, Parser, Token, TokenKind};
+    pub use crate::types::*;
 }
 
 #[cfg(test)]
@@ -114,11 +117,16 @@ mod tests {
     #[test]
     fn test_basic_parse() {
         let config = r#"
-            log_format combined '$remote_addr - $remote_user [$time_local]';
-            access_log /var/log/nginx/access.log combined;
+            user nginx;
+            worker_processes auto;
         "#;
 
         let result = parse(config);
         assert!(result.is_ok());
+
+        let config = result.unwrap();
+        assert_eq!(config.directives.len(), 2);
+        assert_eq!(config.directives[0].name(), "user");
+        assert_eq!(config.directives[1].name(), "worker_processes");
     }
 }
