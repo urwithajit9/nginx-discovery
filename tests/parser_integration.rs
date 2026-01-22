@@ -97,7 +97,7 @@ upstream backend {
     assert_eq!(upstream.children().unwrap().len(), 3); // 3 servers
 }
 
-#[test]
+
 #[test]
 fn test_parse_full_config() {
     let config = r#"
