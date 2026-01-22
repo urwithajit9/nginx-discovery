@@ -1,3 +1,5 @@
 //! High-level extractors for NGINX directives
-//!
-//! Coming soon: log extraction, server extraction, etc.
+
+pub mod logs;
+
+pub use logs::{access_logs, log_formats};

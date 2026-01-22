@@ -107,7 +107,7 @@ pub mod prelude {
     pub use crate::error::{Error, Result};
     pub use crate::error_builder::ErrorBuilder;
     pub use crate::parser::{Lexer, Parser, Token, TokenKind};
-    // pub use crate::types::*;
+    pub use crate::types::*;
 }
 
 #[cfg(test)]

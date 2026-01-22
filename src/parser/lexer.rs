@@ -64,6 +64,12 @@ impl<'a> Lexer<'a> {
                 TokenKind::Semicolon
             }
 
+            // Equals (for options like buffer=32k)
+            '=' => {
+                self.advance();
+                TokenKind::Word("=".to_string()) // Treat = as a word token
+            }
+
             // Strings
             '"' => self.lex_string('"')?,
             '\'' => self.lex_string('\'')?,
@@ -285,8 +291,13 @@ fn is_word_start(ch: char) -> bool {
 
 /// Check if character can be part of a word
 fn is_word_char(ch: char) -> bool {
-    ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' || ch == '/' || ch == '.' || ch == ':'
-    // Add this line for URLs like http://
+    ch.is_ascii_alphanumeric()
+        || ch == '_'
+        || ch == '-'
+        || ch == '/'
+        || ch == '.'
+        || ch == ':'
+        || ch == '='
 }
 
 #[cfg(test)]
