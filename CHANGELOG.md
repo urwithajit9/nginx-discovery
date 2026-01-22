@@ -105,3 +105,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/urwithajit9/nginx-discovery/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/urwithajit9/nginx-discovery/releases/tag/v0.1.0
+
+## [0.1.1] - 2026-01-22 (Unreleased)
+
+### Added
+- Complete implementation of `NginxDiscovery` API
+  - `from_config_text()` - Parse from string
+  - `from_config_file()` - Parse from file
+  - `from_running_instance()` - Auto-detect running nginx
+  - `access_logs()`, `log_formats()` - Extract configurations
+  - `all_log_files()` - Get deduplicated log paths
+  - `server_names()` - Extract server names
+  - `to_json()`, `to_yaml()` - Export configurations
+  - `summary()` - Generate configuration summary
+
+- System module for nginx interaction
+  - `find_nginx()` - Locate nginx binary
+  - `nginx_version()` - Get nginx version
+  - `dump_config()` - Run nginx -T
+  - `test_config()` - Test configuration syntax
+  - `detect_and_parse()` - Auto-detect and parse
+
+- Integration tests for discovery API
+
+### Changed
+- Fixed documentation examples to use `no_run` instead of `ignore`
+- All doc examples now compile-check correctly
+- Improved error messages in system module
+
+### Fixed
+- Discovery API stubs now have working implementations
+- System module properly handles permission errors
+- Better error messages for common issues

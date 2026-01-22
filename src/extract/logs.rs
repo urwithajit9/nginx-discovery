@@ -6,6 +6,11 @@ use crate::types::{AccessLog, LogContext, LogFormat};
 use std::path::PathBuf;
 
 /// Extract all `log_format` directives
+///
+/// # Errors
+///
+/// This function currently does not return errors but returns `Result`
+/// for consistency with other extractors.
 pub fn log_formats(config: &Config) -> Result<Vec<LogFormat>> {
     let mut formats = Vec::new();
 
@@ -19,6 +24,11 @@ pub fn log_formats(config: &Config) -> Result<Vec<LogFormat>> {
 }
 
 /// Extract all `access_log` directives
+///
+/// # Errors
+///
+/// This function currently does not return errors but returns `Result`
+/// for consistency with other extractors.
 pub fn access_logs(config: &Config) -> Result<Vec<AccessLog>> {
     let mut logs = Vec::new();
 
@@ -131,10 +141,10 @@ mod tests {
 
     #[test]
     fn test_extract_log_formats() {
-        let config = r#"
+        let config = r"
 log_format combined '$remote_addr - $remote_user [$time_local]';
 log_format main '$remote_addr $request';
-"#;
+";
 
         let parsed = parse(config).unwrap();
         let formats = log_formats(&parsed).unwrap();
@@ -146,10 +156,10 @@ log_format main '$remote_addr $request';
 
     #[test]
     fn test_extract_access_logs() {
-        let config = r#"
+        let config = r"
 access_log /var/log/nginx/access.log combined;
 access_log /var/log/nginx/main.log main buffer=32k;
-"#;
+";
 
         let parsed = parse(config).unwrap();
         let logs = access_logs(&parsed).unwrap();
@@ -163,12 +173,12 @@ access_log /var/log/nginx/main.log main buffer=32k;
 
     #[test]
     fn test_extract_logs_from_server() {
-        let config = r#"
+        let config = r"
 server {
     server_name example.com;
     access_log /var/log/nginx/example.log;
 }
-"#;
+";
 
         let parsed = parse(config).unwrap();
         let logs = access_logs(&parsed).unwrap();
@@ -180,10 +190,10 @@ server {
 
     #[test]
     fn test_skip_disabled_logs() {
-        let config = r#"
+        let config = r"
 access_log off;
 access_log /var/log/nginx/access.log;
-"#;
+";
 
         let parsed = parse(config).unwrap();
         let logs = access_logs(&parsed).unwrap();
@@ -194,13 +204,13 @@ access_log /var/log/nginx/access.log;
 
     #[test]
     fn test_extract_logs_from_location() {
-        let config = r#"
+        let config = r"
 server {
     location /api {
         access_log /var/log/nginx/api.log;
     }
 }
-"#;
+";
 
         let parsed = parse(config).unwrap();
         let logs = access_logs(&parsed).unwrap();

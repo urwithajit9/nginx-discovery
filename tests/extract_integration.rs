@@ -22,7 +22,6 @@ http {
     server {
         server_name example.com;
         listen 80;
-
         access_log /var/log/nginx/example.log combined buffer=32k;
 
         location / {
@@ -52,11 +51,6 @@ http {
 
     // Extract logs
     let logs = extract::access_logs(&parsed).expect("Should extract logs");
-
-    // Debug: print what we found
-    for (i, log) in logs.iter().enumerate() {
-        println!("Log {}: {} - {:?}", i, log.path.display(), log.context);
-    }
 
     // We should have at least 3 logs
     assert!(
