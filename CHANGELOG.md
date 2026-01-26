@@ -5,7 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## ## [Unreleased]
+
+## [0.2.0] - 2026-01-26
+
+### Added
+
+#### Server Block Support
+- **New `Server` type** - Complete representation of NGINX server blocks
+  - Server names extraction
+  - Listen directives with full option support
+  - Root directory and index files
+  - Nested location blocks
+  - Server-specific access and error logs
+
+- **New `ListenDirective` type** - Full listen directive parsing
+  - Address and port parsing (IPv4, IPv6, hostnames)
+  - SSL/TLS configuration
+  - HTTP/2 and HTTP/3 support
+  - Default server detection
+  - Reuseport and backlog options
+
+- **New `Location` type** - Location block representation
+  - All location modifiers (exact `=`, prefix `^~`, regex `~`, case-insensitive `~*`)
+  - Proxy detection (`proxy_pass`)
+  - Static file detection
+  - Location-specific access logs
+
+#### Enhanced Discovery API
+- `NginxDiscovery::servers()` - Extract all server blocks
+- `NginxDiscovery::listening_ports()` - Get all listening ports (deduplicated)
+- `NginxDiscovery::ssl_servers()` - Filter SSL-enabled servers
+- `NginxDiscovery::proxy_locations()` - Find all proxy locations
+- `NginxDiscovery::location_count()` - Count total location blocks
+
+#### Server Extraction
+- `extract::servers()` - Extract server blocks from configuration
+- Recursive parsing of nested location blocks
+- Support for location modifiers
+- Access and error log extraction per server
+- Index directive parsing
+
+### Testing
+- Comprehensive unit tests for `Server`, `ListenDirective`, and `Location` types
+- Integration tests for server discovery features
+- 16 new integration tests covering:
+  - Basic and complex server configurations
+  - SSL server detection
+  - Proxy location filtering
+  - Listen directive parsing
+  - Location modifiers
+  - Default server detection
+
+### Documentation
+- Module-level documentation for all new types
+- Inline examples in rustdoc
+- Integration test examples
+
+### Changed
+- Improved import organization across all modules
+- Better code formatting consistency
+
+[Unreleased]: https://github.com/urwithajit9/nginx-discovery/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/urwithajit9/nginx-discovery/releases/tag/v0.2.0
+[0.1.1]: https://github.com/urwithajit9/nginx-discovery/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/urwithajit9/nginx-discovery/releases/tag/v0.1.0
 
 ## [0.1.0] - 2026-01-22
 
