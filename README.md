@@ -134,6 +134,47 @@ let config = parse(config_text)?;
 let logs = extract::access_logs(&config)?;
 ```
 
+### Extract Servers
+```rust
+use nginx_discovery::NginxDiscovery;
+
+let config = r#"
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name example.com www.example.com;
+
+    location / {
+        root /var/www/html;
+    }
+
+    location /api {
+        proxy_pass http://backend:3000;
+    }
+}
+"#;
+
+let discovery = NginxDiscovery::from_config_text(config)?;
+
+// Get all servers
+let servers = discovery.servers();
+println!("Found {} servers", servers.len());
+
+// Get SSL servers only
+let ssl_servers = discovery.ssl_servers();
+println!("SSL servers: {}", ssl_servers.len());
+
+// Get all listening ports
+let ports = discovery.listening_ports();
+println!("Listening on ports: {:?}", ports);
+
+// Get proxy locations
+let proxies = discovery.proxy_locations();
+for location in proxies {
+    println!("Proxy: {} -> {:?}", location.path, location.proxy_pass);
+}
+```
+
 ## 📚 Documentation
 
 - [API Documentation](https://docs.rs/nginx-discovery)
@@ -165,30 +206,36 @@ Available features:
 - `serde` - Serialize/deserialize AST types
 - `system` (default) - System interaction utilities
 
-## 📊 Supported NGINX Directives (v0.1.0)
+## 📊 Supported NGINX Directives
 
 Currently supports:
 
 - ✅ Simple directives: `user nginx;`
-- ✅ Block directives: `server { ... }`
+- ✅ Block directives: `server { ... }`, `location { ... }`
 - ✅ Nested blocks: `http { server { location { } } }`
 - ✅ Quoted strings: `"value"` and `'value'`
 - ✅ Variables: `$host`, `${variable}`
 - ✅ Numbers: `80`, `443`, `1024`
 - ✅ Comments: `# comment`
 - ✅ Log formats and access logs
+- ✅ **Server blocks** with listen directives and locations (v0.2.0)
+- ✅ **Listen directives** with SSL, HTTP/2, HTTP/3 options (v0.2.0)
+- ✅ **Location blocks** with all modifiers (=, ^~, ~, ~*) (v0.2.0)
+- ✅ **Proxy detection** and static file serving (v0.2.0)
 
 ## 🗺️ Roadmap
 
-### v0.2.0 (Planned)
-- [ ] Server block extractor
-- [ ] Upstream extractor
-- [ ] SSL/TLS configuration extractor
-- [ ] Include directive resolution
+### v0.2.0 (Released)
+- ✅ Server block extractor
+- ✅ Location block extractor
+- ✅ SSL/TLS server detection
+- ✅ Proxy location detection
 
 ### v0.3.0 (Planned)
+- [ ] Upstream extractor
 - [ ] Map directive support
 - [ ] Geo/GeoIP support
+- [ ] Include directive resolution
 - [ ] Rate limiting configuration
 - [ ] Auth configuration extractor
 

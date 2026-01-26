@@ -297,7 +297,14 @@ impl<'a> Lexer<'a> {
 
 /// Check if character can start a word
 fn is_word_start(ch: char) -> bool {
-    ch.is_ascii_alphabetic() || ch == '_' || ch == '/' || ch == '.' || ch == '*'
+    ch.is_ascii_alphabetic()
+        || ch == '_'
+        || ch == '/'
+        || ch == '.'
+        || ch == '*'
+        || ch == '^'
+        || ch == '~'
+        || ch == '\\'
 }
 
 /// Check if character can be part of a word
@@ -310,6 +317,10 @@ fn is_word_char(ch: char) -> bool {
         || ch == ':'
         || ch == '='
         || ch == '*'
+        || ch == '^'
+        || ch == '~'
+        || ch == '\\'
+        || ch == '$' // Add $ too for regex patterns like $
 }
 
 #[cfg(test)]
