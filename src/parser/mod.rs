@@ -15,6 +15,13 @@ use crate::error::Result;
 ///
 /// This is the main entry point for parsing.
 ///
+/// # Errors
+///
+/// Returns an error if:
+/// - The input contains syntax errors
+/// - Unexpected tokens are encountered
+/// - The configuration structure is invalid
+///
 /// # Examples
 ///
 /// ```

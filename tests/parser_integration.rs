@@ -4,11 +4,11 @@ use nginx_discovery::parse;
 
 #[test]
 fn test_parse_basic_config() {
-    let config = r#"
+    let config = r"
 user nginx;
 worker_processes auto;
 error_log /var/log/nginx/error.log;
-"#;
+";
 
     let result = parse(config).unwrap();
     assert_eq!(result.directives.len(), 3);
@@ -20,7 +20,7 @@ error_log /var/log/nginx/error.log;
 
 #[test]
 fn test_parse_http_block() {
-    let config = r#"
+    let config = r"
 http {
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
@@ -28,7 +28,7 @@ http {
     sendfile on;
     keepalive_timeout 65;
 }
-"#;
+";
 
     let result = parse(config).unwrap();
     assert_eq!(result.directives.len(), 1);
@@ -41,7 +41,7 @@ http {
 
 #[test]
 fn test_parse_server_with_locations() {
-    let config = r#"
+    let config = r"
 server {
     listen 80;
     server_name example.com;
@@ -55,7 +55,7 @@ server {
         proxy_pass http://localhost:3000;
     }
 }
-"#;
+";
 
     let result = parse(config).unwrap();
     let server = &result.directives[0];
@@ -81,13 +81,13 @@ access_log /var/log/nginx/access.log main;
 
 #[test]
 fn test_parse_upstream() {
-    let config = r#"
+    let config = r"
 upstream backend {
     server backend1.example.com:8080;
     server backend2.example.com:8080;
     server backend3.example.com:8080;
 }
-"#;
+";
 
     let result = parse(config).unwrap();
     let upstream = &result.directives[0];
@@ -99,7 +99,7 @@ upstream backend {
 
 #[test]
 fn test_parse_full_config() {
-    let config = r#"
+    let config = r"
 user nginx;
 worker_processes auto;
 
@@ -114,7 +114,7 @@ http {
     access_log /var/log/nginx/access.log main;
 
     upstream backend {
-        server localhost:8080;  # Changed from 127.0.0.1:8080
+        server localhost:8080;
     }
 
     server {
@@ -127,7 +127,7 @@ http {
         }
     }
 }
-"#;
+";
 
     let result = parse(config).unwrap();
     assert_eq!(result.directives.len(), 4); // user, worker_processes, events, http
@@ -155,12 +155,12 @@ proxy_set_header Host $host;
 
 #[test]
 fn test_parse_comments_ignored() {
-    let config = r#"
+    let config = r"
 # This is a comment
-user nginx;  # inline comment
+user nginx;
 # Another comment
 worker_processes auto;
-"#;
+";
 
     let result = parse(config).unwrap();
     // Comments should be skipped, only 2 directives

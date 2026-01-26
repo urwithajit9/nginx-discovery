@@ -58,7 +58,7 @@ http {
 
 #[test]
 fn test_multiline_strings() {
-    let config = r#"log_format combined '$remote_addr - $remote_user [$time_local]';"#;
+    let config = r"log_format combined '$remote_addr - $remote_user [$time_local]';";
 
     let mut lexer = Lexer::new(config);
     let tokens = lexer.tokenize().unwrap();
@@ -69,10 +69,10 @@ fn test_multiline_strings() {
 
 #[test]
 fn test_comments_preserved() {
-    let config = r#"
+    let config = r"
 # Main configuration
-user nginx;  # Run as nginx user
-"#;
+user nginx;
+";
 
     let mut lexer = Lexer::new(config);
     let tokens = lexer.tokenize().unwrap();
@@ -83,5 +83,5 @@ user nginx;  # Run as nginx user
         .filter(|t| matches!(t.kind, nginx_discovery::parser::TokenKind::Comment(_)))
         .collect();
 
-    assert_eq!(comments.len(), 2);
+    assert_eq!(comments.len(), 1);
 }

@@ -10,11 +10,18 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,ignore
+//! ```
 //! use nginx_discovery::prelude::*;
 //!
-//! // Discover from running NGINX instance
-//! let discovery = NginxDiscovery::from_running_instance()?;
+//! # fn main() -> nginx_discovery::Result<()> {
+//! // Parse configuration text
+//! let config = r"
+//!     http {
+//!         access_log /var/log/nginx/access.log;
+//!     }
+//! ";
+//!
+//! let discovery = NginxDiscovery::from_config_text(config)?;
 //!
 //! // Get access logs
 //! for log in discovery.access_logs() {
@@ -25,6 +32,8 @@
 //! for name in discovery.server_names() {
 //!     println!("Server: {}", name);
 //! }
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## Feature Flags
@@ -39,37 +48,72 @@
 //!
 //! ### Extract Log Files
 //!
-//! ```rust,ignore
+//! ```
 //! use nginx_discovery::prelude::*;
 //!
-//! let discovery = NginxDiscovery::from_config_file("/etc/nginx/nginx.conf")?;
+//! # fn main() -> nginx_discovery::Result<()> {
+//! let config = r"
+//!     access_log /var/log/nginx/access.log combined;
+//!     log_format combined '$remote_addr $request';
+//! ";
+//!
+//! let discovery = NginxDiscovery::from_config_text(config)?;
 //! let logs = discovery.access_logs();
 //!
 //! for log in logs {
 //!     println!("Path: {}", log.path.display());
-//!     if let Some(format) = &log.format {
-//!         println!("Format: {}", format.pattern);
+//!     if let Some(format_name) = &log.format_name {
+//!         println!("Format: {}", format_name);
 //!     }
 //! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Parse from File
+//!
+//! ```no_run
+//! use nginx_discovery::prelude::*;
+//!
+//! # fn main() -> nginx_discovery::Result<()> {
+//! let discovery = NginxDiscovery::from_config_file("/etc/nginx/nginx.conf")?;
+//! let logs = discovery.access_logs();
+//! println!("Found {} access logs", logs.len());
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ### Mid-level API
 //!
-//! ```rust,ignore
+//! ```
 //! use nginx_discovery::{parse, extract};
 //!
-//! let config_text = std::fs::read_to_string("/etc/nginx/nginx.conf")?;
-//! let config = parse(&config_text)?;
+//! # fn main() -> nginx_discovery::Result<()> {
+//! let config_text = "access_log /var/log/nginx/access.log;";
+//! let config = parse(config_text)?;
 //!
 //! let logs = extract::access_logs(&config)?;
-//! let servers = extract::servers(&config)?;
+//! assert_eq!(logs.len(), 1);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Low-level Parser
+//!
+//! ```
+//! use nginx_discovery::parse;
+//!
+//! # fn main() -> nginx_discovery::Result<()> {
+//! let config = parse("user nginx;")?;
+//! assert_eq!(config.directives.len(), 1);
+//! assert_eq!(config.directives[0].name(), "user");
+//! # Ok(())
+//! # }
 //! ```
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 // Public modules
@@ -116,10 +160,10 @@ mod tests {
 
     #[test]
     fn test_basic_parse() {
-        let config = r#"
+        let config = r"
             user nginx;
             worker_processes auto;
-        "#;
+        ";
 
         let result = parse(config);
         assert!(result.is_ok());
@@ -128,5 +172,21 @@ mod tests {
         assert_eq!(config.directives.len(), 2);
         assert_eq!(config.directives[0].name(), "user");
         assert_eq!(config.directives[1].name(), "worker_processes");
+    }
+
+    #[test]
+    fn test_discovery_from_text() {
+        let config = "user nginx;";
+        let discovery = NginxDiscovery::from_config_text(config);
+        assert!(discovery.is_ok());
+    }
+
+    #[test]
+    fn test_prelude_imports() {
+        use crate::prelude::*;
+
+        let config = "user nginx;";
+        let discovery = NginxDiscovery::from_config_text(config).unwrap();
+        assert_eq!(discovery.config().directives.len(), 1);
     }
 }

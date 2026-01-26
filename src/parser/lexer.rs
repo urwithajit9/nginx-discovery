@@ -1,5 +1,4 @@
 //! Lexer for NGINX configuration files
-
 use crate::ast::Span;
 use crate::error::{Error, Result};
 use crate::parser::{Token, TokenKind};
@@ -29,6 +28,13 @@ impl<'a> Lexer<'a> {
     }
 
     /// Get the next token
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - An unexpected character is encountered
+    /// - A string literal is unterminated
+    /// - A variable reference is malformed
     pub fn next_token(&mut self) -> Result<Token> {
         // Skip whitespace
         self.skip_whitespace();
@@ -97,6 +103,11 @@ impl<'a> Lexer<'a> {
     }
 
     /// Tokenize the entire input
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any token cannot be parsed.
+    /// See [`next_token`](Self::next_token) for specific error conditions.
     pub fn tokenize(&mut self) -> Result<Vec<Token>> {
         let mut tokens = Vec::new();
 
@@ -286,7 +297,14 @@ impl<'a> Lexer<'a> {
 
 /// Check if character can start a word
 fn is_word_start(ch: char) -> bool {
-    ch.is_ascii_alphabetic() || ch == '_' || ch == '/' || ch == '.'
+    ch.is_ascii_alphabetic()
+        || ch == '_'
+        || ch == '/'
+        || ch == '.'
+        || ch == '*'
+        || ch == '^'
+        || ch == '~'
+        || ch == '\\'
 }
 
 /// Check if character can be part of a word
@@ -298,6 +316,11 @@ fn is_word_char(ch: char) -> bool {
         || ch == '.'
         || ch == ':'
         || ch == '='
+        || ch == '*'
+        || ch == '^'
+        || ch == '~'
+        || ch == '\\'
+        || ch == '$' // Add $ too for regex patterns like $
 }
 
 #[cfg(test)]
