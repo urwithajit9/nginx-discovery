@@ -35,6 +35,7 @@
 use crate::ast::Config;
 use crate::error::Result;
 use crate::extract;
+use crate::prelude::Server;
 use crate::types::{AccessLog, LogFormat};
 use std::path::{Path, PathBuf};
 
@@ -374,6 +375,140 @@ impl NginxDiscovery {
             - Access logs: {access_log_count}\n\
             - Log formats: {format_count}"
         )
+    }
+
+    // Add these methods to the NginxDiscovery impl block:
+
+    /// Get all server blocks
+    ///
+    /// Returns all `server` blocks found in the configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nginx_discovery::NginxDiscovery;
+    ///
+    /// let config = r"
+    /// server {
+    ///     listen 80;
+    ///     server_name example.com;
+    /// }
+    /// ";
+    ///
+    /// let discovery = NginxDiscovery::from_config_text(config)?;
+    /// let servers = discovery.servers();
+    /// assert_eq!(servers.len(), 1);
+    /// # Ok::<(), nginx_discovery::Error>(())
+    /// ```
+    #[must_use]
+    pub fn servers(&self) -> Vec<crate::types::Server> {
+        extract::servers(&self.config).unwrap_or_default()
+    }
+
+    /// Get all listening ports
+    ///
+    /// Returns a deduplicated list of all ports that servers are listening on.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nginx_discovery::NginxDiscovery;
+    ///
+    /// let config = r"
+    /// server {
+    ///     listen 80;
+    ///     listen 443 ssl;
+    /// }
+    /// ";
+    ///
+    /// let discovery = NginxDiscovery::from_config_text(config)?;
+    /// let ports = discovery.listening_ports();
+    /// assert!(ports.contains(&80));
+    /// assert!(ports.contains(&443));
+    /// # Ok::<(), nginx_discovery::Error>(())
+    /// ```
+    #[must_use]
+    pub fn listening_ports(&self) -> Vec<u16> {
+        let mut ports: Vec<u16> = self
+            .servers()
+            .iter()
+            .flat_map(|s| s.listen.iter().map(|l| l.port))
+            .collect();
+
+        ports.sort_unstable();
+        ports.dedup();
+        ports
+    }
+
+    /// Get all SSL-enabled servers
+    ///
+    /// Returns servers that have SSL configured.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nginx_discovery::NginxDiscovery;
+    ///
+    /// let config = r"
+    /// server {
+    ///     listen 80;
+    ///     server_name example.com;
+    /// }
+    /// server {
+    ///     listen 443 ssl;
+    ///     server_name secure.example.com;
+    /// }
+    /// ";
+    ///
+    /// let discovery = NginxDiscovery::from_config_text(config)?;
+    /// let ssl_servers = discovery.ssl_servers();
+    /// assert_eq!(ssl_servers.len(), 1);
+    /// # Ok::<(), nginx_discovery::Error>(())
+    /// ```
+    #[must_use]
+    pub fn ssl_servers(&self) -> Vec<crate::types::Server> {
+        self.servers().into_iter().filter(Server::has_ssl).collect()
+    }
+
+    /// Get all proxy locations
+    ///
+    /// Returns all location blocks that have `proxy_pass` configured.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nginx_discovery::NginxDiscovery;
+    ///
+    /// let config = r"
+    /// server {
+    ///     location / {
+    ///         root /var/www;
+    ///     }
+    ///     location /api {
+    ///         proxy_pass http://backend;
+    ///     }
+    /// }
+    /// ";
+    ///
+    /// let discovery = NginxDiscovery::from_config_text(config)?;
+    /// let proxies = discovery.proxy_locations();
+    /// assert_eq!(proxies.len(), 1);
+    /// # Ok::<(), nginx_discovery::Error>(())
+    /// ```
+    #[must_use]
+    pub fn proxy_locations(&self) -> Vec<crate::types::Location> {
+        self.servers()
+            .iter()
+            .flat_map(|s| s.locations.iter())
+            .filter(|l: &&crate::types::Location| l.is_proxy())
+            .cloned()
+            .collect()
+    }
+
+    /// Count total number of location blocks
+    #[must_use]
+    pub fn location_count(&self) -> usize {
+        self.servers().iter().map(|s| s.locations.len()).sum()
     }
 }
 
