@@ -248,19 +248,22 @@ Currently supports:
 
 ## 🗺️ Roadmap
 
-### v0.2.0 (Released)
-- ✅ Server block extractor
-- ✅ Location block extractor
-- ✅ SSL/TLS server detection
-- ✅ Proxy location detection
+## 🗺️ Roadmap
 
-### v0.3.0 (Planned)
-- [ ] Upstream extractor
-- [ ] Map directive support
-- [ ] Geo/GeoIP support
-- [ ] Include directive resolution
-- [ ] Rate limiting configuration
-- [ ] Auth configuration extractor
+### v0.3.0 (Released)
+- ✅ CLI Phase 1 implementation
+- ✅ Parse, extract, export, doctor commands
+- ✅ SSL/TLS analysis command
+- ✅ Security analysis command
+- ✅ Interactive mode
+- ✅ Enhanced extract commands
+
+### v0.4.0 (Planned)
+- [ ] Export markdown - Documentation generation
+- [ ] Export fluentd - Fluentd config generation
+- [ ] Network checks in doctor
+- [ ] Shell completions
+- [ ] Enhanced security analysis
 
 ### v1.0.0 (Future)
 - [ ] Complete NGINX directive support
@@ -289,6 +292,50 @@ cargo fmt
 cargo clippy --all-features -- -D warnings
 ```
 
+## 🖥️ Command-Line Interface
+
+nginx-discovery includes a powerful CLI tool for analyzing NGINX configurations.
+
+### Installation
+```bash
+cargo install --path . --features cli
+```
+
+### Quick Start
+```bash
+# Run health check
+sudo nginx-discover doctor
+
+# Parse configuration
+sudo nginx-discover parse --tree
+
+# Extract servers
+sudo nginx-discover extract servers --ssl-only
+
+# Export to JSON
+sudo nginx-discover export json --pretty
+```
+
+### Documentation
+
+- [Complete CLI Guide](CLI_GUIDE.md) - Comprehensive documentation
+- [Quick Reference](CLI_QUICKREF.md) - Command cheat sheet
+
+### Example Usage
+```bash
+# Generate infrastructure inventory
+sudo nginx-discover extract servers -f json -o servers.json
+sudo nginx-discover extract logs --with-formats -f json -o logs.json
+
+# Security audit
+sudo nginx-discover extract servers --ssl-only
+sudo nginx-discover extract locations --proxy-only
+
+# Service discovery
+sudo nginx-discover extract locations --proxy-only -f json | \
+    jq '.[] | {server, path, upstream: .proxy_pass}'
+```
+
 ## 📝 License
 
 Licensed under either of:
@@ -302,7 +349,7 @@ at your option.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Built with ❤️ in Rust.
 

@@ -7,7 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+
 ## [Unreleased]
+
+## [0.3.0] - 2026-01-28
+
+### Added - Phase 2 Complete
+
+#### Analysis Commands
+- **`analyze ssl`** - SSL/TLS configuration analysis
+  - HTTP/2 support detection
+  - Mixed content warnings (HTTP proxies on HTTPS servers)
+  - Certificate validation framework
+  - Multiple output formats (table, JSON, YAML, CSV)
+  - Warnings-only filter
+- **`analyze security`** - Security configuration analysis
+  - Default server without server_name detection
+  - Sensitive paths on HTTP detection
+  - Server tokens disclosure warnings
+  - Severity level filtering (info, warning, critical)
+  - Fix suggestions with `--fix` flag
+
+#### Interactive Mode
+- **`interactive`** command - User-friendly guided interface
+  - Configuration file selection
+  - Main menu with all operations
+  - View summary, servers, logs, locations
+  - Run SSL and security analysis
+  - Export configuration (JSON/YAML)
+  - Health checks
+  - Configuration reload
+  - Beautiful terminal UI with `dialoguer`
+
+#### Enhanced Extract Commands
+- All extract commands now support per-subcommand format and output options
+- Improved filtering and output consistency
+
+### Changed
+- Extract command argument structure updated for better UX
+- All subcommands now have individual `--format` and `--output` options
+
+### Fixed
+- Argument parsing for nested subcommands
+- Borrow checker issues in analysis commands
+- Unused variable warnings
+
+### Documentation
+- Updated CLI_GUIDE.md with Phase 2 features (pending)
+- Complete interactive mode documentation
+
+[0.3.0]: https://github.com/urwithajit9/nginx-discovery/compare/v0.2.1...v0.3.0
 
 ## [0.2.1] - 2026-01-26
 
