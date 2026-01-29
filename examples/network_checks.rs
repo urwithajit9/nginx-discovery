@@ -1,20 +1,33 @@
 // examples/network_checks.rs
 //! Example demonstrating network health checks
+//!
+//! Run with: cargo run --example network_checks --features network
 
-#![cfg(feature = "network")]
+#[cfg(not(feature = "network"))]
+fn main() {
+    eprintln!("❌ This example requires the 'network' feature");
+    eprintln!();
+    eprintln!("Run with:");
+    eprintln!("  cargo run --example network_checks --features network");
+    eprintln!();
+    eprintln!("Or add to Cargo.toml:");
+    eprintln!("  nginx-discovery = {{ version = \"0.4.0\", features = [\"network\"] }}");
+    std::process::exit(1);
+}
 
-use nginx_discovery::{
-    parse,
-    network::{
-        check_port, check_ssl_certificate, resolve_hostname, check_all,
-        NetworkCheckOptions, UpstreamBackend, check_upstream,
-        check_upstream_http, HealthStatus,
-    },
-};
-use std::path::Path;
-
+#[cfg(feature = "network")]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    use nginx_discovery::{
+        parse,
+        network::{
+            check_port, check_ssl_certificate, resolve_hostname, check_all,
+            NetworkCheckOptions, UpstreamBackend, check_upstream,
+            check_upstream_http, HealthStatus,
+        },
+    };
+    use std::path::Path;
+
     println!("=== Network Check Examples ===\n");
 
     // Example 1: Check port availability
@@ -79,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
     println!("4. Upstream Backend Check:");
     println!("--------------------------");
     let backend = UpstreamBackend {
-        host: "backend1.example.com".to_string(),
+        host: "localhost".to_string(),
         port: 8080,
         weight: Some(1),
         max_fails: Some(3),
@@ -142,9 +155,9 @@ http {
     // Configure which checks to run
     let options = NetworkCheckOptions {
         check_upstreams: false,
-        check_ssl: true,
-        check_ports: true,
-        check_dns: true,
+        check_ssl: false,  // Would need real cert file
+        check_ports: false,
+        check_dns: true,   // Can check example.com
         ..Default::default()
     };
 

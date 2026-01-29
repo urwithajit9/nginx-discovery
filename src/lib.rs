@@ -133,6 +133,12 @@ pub mod types;
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 pub mod visitor;
 
+#[cfg(feature = "serde")]
+pub mod export;
+
+#[cfg(feature = "network")]
+pub mod network;
+
 // High-level API
 mod discovery;
 pub use discovery::NginxDiscovery;

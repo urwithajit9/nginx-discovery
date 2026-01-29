@@ -1,91 +1,114 @@
+# Cargo.toml for nginx-discovery v0.4.0
+
 [package]
 name = "nginx-discovery"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.70.0"
-authors = ["Ajit Kumar <ajitkumar.pu@gmail.com>"]
+authors = ["Ajit Kumar <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
-description = "Discover and introspect NGINX configurations with ease"
-documentation = "https://docs.rs/nginx-discovery"
+description = "Parse, analyze, and extract information from NGINX configurations"
 homepage = "https://github.com/urwithajit9/nginx-discovery"
 repository = "https://github.com/urwithajit9/nginx-discovery"
+documentation = "https://docs.rs/nginx-discovery"
 readme = "README.md"
-keywords = ["nginx", "config", "parser", "discovery", "introspection"]
-categories = ["config", "parsing", "web-programming", "development-tools"]
-exclude = [
-    ".github/",
-    "tests/fixtures/large/",
-    "*.log",
-]
+keywords = ["nginx", "parser", "configuration", "devops", "cli"]
+categories = ["parser-implementations", "command-line-utilities", "development-tools"]
 
 [dependencies]
-# Error handling
+# Core dependencies
 thiserror = "1.0"
 
-# Optional - System interaction
-which = { version = "6.0", optional = true }
-
-# Optional - Serialization
+# Serialization (optional)
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 serde_yaml = { version = "0.9", optional = true }
 
-# Optional - Include resolution
-walkdir = { version = "2.4", optional = true }
+# Export formats (optional)
+toml = { version = "0.8", optional = true }
+chrono = { version = "0.4", features = ["serde"], optional = true }
 
-# Optional - CLI
-clap = { version = "4.5", features = ["derive", "cargo"], optional = true }
+# Network features (optional)
+tokio = { version = "1.0", features = ["rt-multi-thread", "net", "time"], optional = true }
+reqwest = { version = "0.11", features = ["blocking"], optional = true }
+futures = { version = "0.3", optional = true }
+x509-parser = { version = "0.15", optional = true }
+trust-dns-resolver = { version = "0.23", optional = true }
+
+# System interaction (optional)
+which = { version = "6.0", optional = true }
+
+# CLI dependencies (optional)
+clap = { version = "4.5", features = ["derive"], optional = true }
+clap_complete = { version = "4.5", optional = true }
 colored = { version = "2.1", optional = true }
-anyhow = { version = "1.0", optional = true }
-dialoguer = { version = "0.11", optional = true }
 tabled = { version = "0.15", optional = true }
+dialoguer = { version = "0.11", optional = true }
+anyhow = { version = "1.0", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+tempfile = "3.10"
 criterion = "0.5"
-tempfile = "3.8"
-indoc = "2.0"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 
 [features]
 default = ["system"]
+visitor = []
+includes = []
 
-# Enable system interaction (nginx -T, binary detection)
+# Core features
 system = ["dep:which"]
-
-# Serialization support
 serde = ["dep:serde", "dep:serde_json", "dep:serde_yaml"]
 
-# Visitor pattern support
-visitor = []
+# Export features
+export-toml = ["dep:toml", "serde"]
+export-markdown = ["dep:chrono", "serde"]
+export-all = ["export-toml", "export-markdown"]
 
-# Include directive resolution
-includes = ["dep:walkdir"]
+# Network features
+network = [
+    "dep:tokio",
+    "dep:reqwest",
+    "dep:futures",
+    "dep:x509-parser",
+    "dep:trust-dns-resolver",
+    "dep:chrono"
+]
 
-# CLI binary and all necessary features
+# CLI features
 cli = [
     "dep:clap",
+    "dep:clap_complete",
     "dep:colored",
-    "dep:anyhow",
-    "dep:dialoguer",
     "dep:tabled",
+    "dep:dialoguer",
+    "dep:anyhow",
     "system",
     "serde",
 ]
 
-[[bench]]
-name = "parser_bench"
-harness = false
+# All features
+full = ["cli", "network", "export-all"]
 
 [[bin]]
 name = "nginx-discover"
 path = "src/bin/nginx-discover.rs"
 required-features = ["cli"]
 
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+[[bench]]
+name = "parser_bench"
+harness = false
 
 [profile.release]
+opt-level = 3
 lto = true
 codegen-units = 1
 strip = true
+
+[profile.dev]
+opt-level = 0
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

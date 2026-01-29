@@ -313,3 +313,13 @@ mod tests {
         assert!(!ssl_only.check_ports);
     }
 }
+
+/// DNS validation result
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct DnsValidationResult {
+    pub domain: String,
+    pub ns_records: Option<Vec<String>>,
+    pub soa_record: Option<String>,
+    pub is_valid: bool,
+}

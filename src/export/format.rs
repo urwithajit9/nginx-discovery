@@ -115,7 +115,7 @@ impl std::str::FromStr for ExportFormat {
 /// Trait for custom exporters
 pub trait Exporter {
     /// Export configuration to the writer
-    fn export(&self, config: &crate::Config, writer: &mut dyn std::io::Write) -> crate::Result<()>;
+    fn export(&self, config: &crate::ast::Config, writer: &mut dyn std::io::Write) -> crate::Result<()>;
 
     /// Get format name
     fn format_name(&self) -> &str;

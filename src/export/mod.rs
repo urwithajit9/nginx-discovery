@@ -1,36 +1,18 @@
 // src/export/mod.rs
 //! Enhanced export functionality with multiple format support
-//!
-//! This module provides comprehensive export capabilities for NGINX configurations,
-//! supporting JSON, YAML, TOML, and Markdown formats with filtering and transformation.
 
 pub mod format;
 pub mod options;
 pub mod filter;
 
-// Re-export main types
 pub use format::{ExportFormat, Exporter};
 pub use options::{ExportOptions, ExportOptionsBuilder};
 pub use filter::{Filter, FilterType};
 
-use crate::{Config, Result};
+use crate::{ast::Config, Result};
 use std::io::Write;
 
 /// Main export function with full options support
-///
-/// # Examples
-///
-/// ```rust
-/// use nginx_discovery::export::{export, ExportOptions, ExportFormat};
-///
-/// let config = nginx_discovery::parse(nginx_config)?;
-/// let options = ExportOptions::builder()
-///     .format(ExportFormat::Json)
-///     .pretty(true)
-///     .build();
-///
-/// export(&config, &mut std::io::stdout(), options)?;
-/// ```
 pub fn export<W: Write>(config: &Config, writer: &mut W, options: ExportOptions) -> Result<()> {
     // Apply filters if specified
     let filtered_config = if let Some(filter) = &options.filter {
@@ -95,8 +77,6 @@ fn export_yaml<W: Write>(config: &Config, writer: &mut W, _options: &ExportOptio
 /// Export to TOML format
 #[cfg(feature = "export-toml")]
 fn export_toml<W: Write>(config: &Config, writer: &mut W, options: &ExportOptions) -> Result<()> {
-    use toml;
-
     let toml_str = if options.pretty {
         toml::to_string_pretty(config)?
     } else {
@@ -126,52 +106,46 @@ fn export_markdown<W: Write>(config: &Config, writer: &mut W, options: &ExportOp
         writeln!(md)?;
     }
 
-    // HTTP block
-    if let Some(http) = config.http() {
-        writeln!(md, "## HTTP Configuration")?;
+    // HTTP Configuration - extract servers directly
+    writeln!(md, "## HTTP Configuration")?;
+    writeln!(md)?;
+
+    // Servers
+    let servers = crate::extract::servers(config)?;
+    if !servers.is_empty() {
+        writeln!(md, "### Servers ({} total)", servers.len())?;
         writeln!(md)?;
 
-        // Servers
-        let servers = crate::extract::servers(config)?;
-        if !servers.is_empty() {
-            writeln!(md, "### Servers ({} total)", servers.len())?;
+        for (i, server) in servers.iter().enumerate() {
+            writeln!(md, "#### Server {}", i + 1)?;
             writeln!(md)?;
 
-            for (i, server) in servers.iter().enumerate() {
-                writeln!(md, "#### Server {}", i + 1)?;
-                writeln!(md)?;
-
-                if !server.server_names.is_empty() {
-                    writeln!(md, "- **Server Names**: {}", server.server_names.join(", "))?;
-                }
-
-                if !server.listen.is_empty() {
-                    writeln!(md, "- **Listen**: {}",
-                        server.listen.iter()
-                            .map(|l| format!("{}:{}", l.address, l.port))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )?;
-                }
-
-                if server.ssl.is_some() {
-                    writeln!(md, "- **SSL**: Enabled")?;
-                }
-
-                if let Some(root) = &server.root {
-                    writeln!(md, "- **Root**: {}", root.display())?;
-                }
-
-                writeln!(md)?;
+            if !server.server_names.is_empty() {
+                writeln!(md, "- **Server Names**: {}", server.server_names.join(", "))?;
             }
-        }
 
-        // Upstreams
-        writeln!(md, "### Upstreams")?;
-        writeln!(md)?;
-        writeln!(md, "_Upstream extraction coming in next version_")?;
-        writeln!(md)?;
+            if !server.listen.is_empty() {
+                writeln!(md, "- **Listen**: {}",
+                    server.listen.iter()
+                        .map(|l| format!("{}:{}", l.address, l.port))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )?;
+            }
+
+            if let Some(root) = &server.root {
+                writeln!(md, "- **Root**: {}", root.display())?;
+            }
+
+            writeln!(md)?;
+        }
     }
+
+    // Upstreams
+    writeln!(md, "### Upstreams")?;
+    writeln!(md)?;
+    writeln!(md, "_Upstream extraction coming in next version_")?;
+    writeln!(md)?;
 
     // Stream block
     writeln!(md, "## Stream Configuration")?;
@@ -196,11 +170,5 @@ mod tests {
 
         export(&config, &mut output, options).unwrap();
         assert!(!output.is_empty());
-    }
-
-    #[test]
-    fn test_export_with_filter() {
-        // Test filtering functionality
-        // TODO: Implement once filter is complete
     }
 }

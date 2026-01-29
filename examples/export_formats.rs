@@ -1,13 +1,31 @@
 // examples/export_formats.rs
 //! Example demonstrating different export formats
+//!
+//! Run with: cargo run --example export_formats --features serde
 
-use nginx_discovery::{
-    parse,
-    export::{export, ExportOptions, ExportFormat, Filter, FilterType},
-};
-use std::io;
+#[cfg(not(feature = "serde"))]
+fn main() {
+    eprintln!("❌ This example requires the 'serde' feature");
+    eprintln!();
+    eprintln!("Run with:");
+    eprintln!("  cargo run --example export_formats --features serde");
+    eprintln!();
+    eprintln!("For TOML support, add:");
+    eprintln!("  cargo run --example export_formats --features export-toml");
+    eprintln!();
+    eprintln!("For Markdown support, add:");
+    eprintln!("  cargo run --example export_formats --features export-markdown");
+    std::process::exit(1);
+}
 
+#[cfg(feature = "serde")]
 fn main() -> anyhow::Result<()> {
+    use nginx_discovery::{
+        parse,
+        export::{export, ExportOptions, ExportFormat, Filter, FilterType},
+    };
+    use std::io;
+
     // Sample NGINX configuration
     let config_text = r#"
 http {
@@ -82,6 +100,14 @@ http {
         println!("\n");
     }
 
+    #[cfg(not(feature = "export-toml"))]
+    {
+        println!("3. TOML Export:");
+        println!("---------------");
+        println!("(Skipped - enable with --features export-toml)");
+        println!();
+    }
+
     // Example 4: Export to Markdown (if feature enabled)
     #[cfg(feature = "export-markdown")]
     {
@@ -94,6 +120,14 @@ http {
 
         export(&config, &mut io::stdout(), md_options)?;
         println!("\n");
+    }
+
+    #[cfg(not(feature = "export-markdown"))]
+    {
+        println!("4. Markdown Export:");
+        println!("-------------------");
+        println!("(Skipped - enable with --features export-markdown)");
+        println!();
     }
 
     // Example 5: Export with filtering
@@ -122,6 +156,11 @@ http {
     println!("\n");
 
     println!("=== Export Examples Complete ===");
+    println!();
+    println!("Tip: Enable more formats with:");
+    println!("  --features export-toml");
+    println!("  --features export-markdown");
+    println!("  --features export-all  (enables all)");
 
     Ok(())
 }

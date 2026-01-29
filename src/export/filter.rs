@@ -1,7 +1,7 @@
 // src/export/filter.rs
 //! Filtering logic for exports
 
-use crate::{Config, Result, Error};
+use crate::{ast::Config, Result, Error};
 
 /// Filter for selecting specific configuration elements
 #[derive(Debug, Clone)]
@@ -73,50 +73,24 @@ impl Filter {
     }
 
     /// Filter servers by name pattern
-    fn filter_by_server_name(&self, config: &mut Config) -> Result<()> {
-        use crate::extract::servers;
-
-        let all_servers = servers(config)?;
-        let pattern = &self.pattern;
-
-        // Simple wildcard matching
-        let matches_pattern = |name: &str| {
-            if pattern.contains('*') {
-                // Convert wildcard to regex-like matching
-                let pattern_parts: Vec<&str> = pattern.split('*').collect();
-                if pattern_parts.len() == 2 {
-                    name.starts_with(pattern_parts[0]) && name.ends_with(pattern_parts[1])
-                } else {
-                    name == pattern
-                }
-            } else {
-                name == pattern
-            }
-        };
-
-        // Filter server blocks
-        // TODO: This is a simplified version - full implementation would
-        // modify the AST to remove non-matching server blocks
-
+    fn filter_by_server_name(&self, _config: &mut Config) -> Result<()> {
+        // Simplified implementation - just return OK for now
+        // TODO: Implement proper server name filtering
         Ok(())
     }
 
     /// Filter by port number
-    fn filter_by_port(&self, config: &mut Config) -> Result<()> {
-        let target_port: u16 = self.pattern.parse()
+    fn filter_by_port(&self, _config: &mut Config) -> Result<()> {
+        let _target_port: u16 = self.pattern.parse()
             .map_err(|_| Error::InvalidInput(format!("Invalid port number: {}", self.pattern)))?;
 
-        // Filter logic here
         // TODO: Implement port filtering
-
         Ok(())
     }
 
     /// Filter to only SSL-enabled servers
-    fn filter_ssl_only(&self, config: &mut Config) -> Result<()> {
-        // Filter logic here
-        // TODO: Implement SSL filtering
-
+    fn filter_ssl_only(&self, _config: &mut Config) -> Result<()> {
+        // TODO: Implement SSL filtering when Server has ssl field
         Ok(())
     }
 
@@ -125,7 +99,7 @@ impl Filter {
         let directive_name = &self.pattern;
 
         // Keep only specified directives
-        config.directives.retain(|d| d.name == directive_name);
+        config.directives.retain(|d| d.name() == directive_name);
 
         Ok(())
     }

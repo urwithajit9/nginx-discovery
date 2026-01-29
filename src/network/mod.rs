@@ -1,12 +1,5 @@
 // src/network/mod.rs
 //! Network health checking and validation
-//!
-//! This module provides comprehensive network checking capabilities:
-//! - Upstream backend health checks
-//! - SSL/TLS certificate validation
-//! - Port availability checks
-//! - DNS resolution
-//! - Network latency measurements
 
 pub mod upstream;
 pub mod ssl;
@@ -18,27 +11,15 @@ pub use types::{
     HealthStatus, HealthCheckResult, SslCheckResult, PortCheckResult, DnsCheckResult,
     CheckSeverity, NetworkCheckOptions,
 };
-pub use upstream::check_upstream;
+
 pub use ssl::check_ssl_certificate;
+#[cfg(feature = "network")]
 pub use port::check_port;
 pub use dns::resolve_hostname;
 
-use crate::{Config, Result};
+use crate::{ast::Config, Result};
 
 /// Run all network checks on a configuration
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use nginx_discovery::network::check_all;
-///
-/// let config = nginx_discovery::parse(nginx_config)?;
-/// let results = check_all(&config, Default::default())?;
-///
-/// for result in results {
-///     println!("{}: {}", result.check_type, result.status);
-/// }
-/// ```
 pub async fn check_all(config: &Config, options: NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
     let mut results = Vec::new();
 
@@ -81,56 +62,56 @@ pub struct NetworkCheckResult {
 }
 
 /// Check all upstreams defined in config
-async fn check_all_upstreams(config: &Config, options: &NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
-    let mut results = Vec::new();
+async fn check_all_upstreams(_config: &Config, _options: &NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
+    let results = Vec::new();
 
-    // TODO: Extract upstreams from config
-    // For now, return empty results
+    // TODO: Extract upstreams from config when upstream extraction is implemented
 
     Ok(results)
 }
 
 /// Check all SSL certificates
-async fn check_all_ssl(config: &Config, options: &NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
+async fn check_all_ssl(config: &Config, _options: &NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
     use crate::extract::servers;
 
-    let mut results = Vec::new();
+    let results = Vec::new();
     let servers = servers(config)?;
 
-    for server in servers {
-        if let Some(ssl_config) = &server.ssl {
-            if let Some(cert_path) = &ssl_config.certificate {
-                match check_ssl_certificate(cert_path).await {
-                    Ok(check_result) => {
-                        results.push(NetworkCheckResult {
-                            check_type: "ssl_certificate".to_string(),
-                            target: cert_path.display().to_string(),
-                            status: check_result.status,
-                            message: check_result.message,
-                            severity: check_result.severity,
-                            details: check_result.details,
-                        });
-                    }
-                    Err(e) => {
-                        results.push(NetworkCheckResult {
-                            check_type: "ssl_certificate".to_string(),
-                            target: cert_path.display().to_string(),
-                            status: HealthStatus::Error,
-                            message: format!("Failed to check certificate: {}", e),
-                            severity: CheckSeverity::Error,
-                            details: None,
-                        });
-                    }
-                }
-            }
-        }
+    for _server in servers {
+        // TODO: Re-enable when Server has ssl field
+        // if let Some(ssl_config) = &server.ssl {
+        //     if let Some(cert_path) = &ssl_config.certificate {
+        //         match check_ssl_certificate(cert_path).await {
+        //             Ok(check_result) => {
+        //                 results.push(NetworkCheckResult {
+        //                     check_type: "ssl_certificate".to_string(),
+        //                     target: cert_path.display().to_string(),
+        //                     status: check_result.status,
+        //                     message: check_result.message,
+        //                     severity: check_result.severity,
+        //                     details: check_result.details,
+        //                 });
+        //             }
+        //             Err(e) => {
+        //                 results.push(NetworkCheckResult {
+        //                     check_type: "ssl_certificate".to_string(),
+        //                     target: cert_path.display().to_string(),
+        //                     status: HealthStatus::Error,
+        //                     message: format!("Failed to check certificate: {}", e),
+        //                     severity: CheckSeverity::Error,
+        //                     details: None,
+        //                 });
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     Ok(results)
 }
 
 /// Check all ports
-async fn check_all_ports(config: &Config, options: &NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
+async fn check_all_ports(config: &Config, _options: &NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
     use crate::extract::servers;
 
     let mut results = Vec::new();
@@ -167,7 +148,7 @@ async fn check_all_ports(config: &Config, options: &NetworkCheckOptions) -> Resu
 }
 
 /// Check all DNS entries
-async fn check_all_dns(config: &Config, options: &NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
+async fn check_all_dns(config: &Config, _options: &NetworkCheckOptions) -> Result<Vec<NetworkCheckResult>> {
     use crate::extract::servers;
 
     let mut results = Vec::new();

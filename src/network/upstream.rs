@@ -1,92 +1,76 @@
-// src/network/dns.rs
-//! DNS resolution checking
+// src/network/upstream.rs
+//! Upstream backend health checking
 
-use super::types::{DnsCheckResult, HealthStatus, CheckSeverity};
+use super::types::{HealthCheckResult, HealthStatus, CheckSeverity};
 use crate::{Result, Error};
 use std::time::{Duration, Instant};
 
-/// Resolve hostname to IP addresses
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use nginx_discovery::network::resolve_hostname;
-///
-/// #[tokio::main]
-/// async fn main() {
-///     let result = resolve_hostname("example.com").await;
-///     match result {
-///         Ok(check) => {
-///             println!("Resolved to: {:?}", check.addresses);
-///         }
-///         Err(e) => eprintln!("Resolution failed: {}", e),
-///     }
-/// }
-/// ```
-pub async fn resolve_hostname(hostname: &str) -> Result<DnsCheckResult> {
+/// Upstream backend definition
+#[derive(Debug, Clone)]
+pub struct UpstreamBackend {
+    pub host: String,
+    pub port: u16,
+    pub weight: Option<u32>,
+    pub max_fails: Option<u32>,
+    pub fail_timeout: Option<Duration>,
+}
+
+/// Check upstream backend health
+pub async fn check_upstream_backend(backend: &UpstreamBackend) -> Result<HealthCheckResult> {
     #[cfg(feature = "network")]
     {
-        use tokio::net::lookup_host;
+        use tokio::net::TcpStream;
         use tokio::time::timeout;
 
+        let target = format!("{}:{}", backend.host, backend.port);
         let start = Instant::now();
 
-        // Try to resolve with timeout
-        let resolve_result = timeout(
+        // Try to connect
+        let connect_result = timeout(
             Duration::from_secs(5),
-            lookup_host(format!("{}:0", hostname))
+            TcpStream::connect(&target)
         ).await;
 
-        let resolution_time = start.elapsed();
+        let latency = start.elapsed();
 
-        match resolve_result {
-            Ok(Ok(addrs)) => {
-                let addresses: Vec<String> = addrs
-                    .map(|addr| addr.ip().to_string())
-                    .collect();
-
-                if addresses.is_empty() {
-                    Ok(DnsCheckResult {
-                        status: HealthStatus::Unhealthy,
-                        message: format!("No addresses found for {}", hostname),
-                        severity: CheckSeverity::Warning,
-                        details: None,
-                        hostname: hostname.to_string(),
-                        addresses,
-                        resolution_time: Some(resolution_time),
-                    })
+        match connect_result {
+            Ok(Ok(_stream)) => {
+                let status = if latency > Duration::from_secs(2) {
+                    HealthStatus::Degraded
                 } else {
-                    Ok(DnsCheckResult {
-                        status: HealthStatus::Healthy,
-                        message: format!("Resolved {} to {} address(es)", hostname, addresses.len()),
-                        severity: CheckSeverity::Info,
-                        details: Some(format!("Addresses: {}", addresses.join(", "))),
-                        hostname: hostname.to_string(),
-                        addresses,
-                        resolution_time: Some(resolution_time),
-                    })
-                }
+                    HealthStatus::Healthy
+                };
+
+                let severity = if latency > Duration::from_secs(2) {
+                    CheckSeverity::Warning
+                } else {
+                    CheckSeverity::Info
+                };
+
+                Ok(HealthCheckResult {
+                    status,
+                    message: format!("Backend {} is reachable", target),
+                    severity,
+                    details: Some(format!("Response time: {:?}", latency)),
+                    latency: Some(latency),
+                })
             }
             Ok(Err(e)) => {
-                Ok(DnsCheckResult {
-                    status: HealthStatus::Error,
-                    message: format!("Failed to resolve {}", hostname),
+                Ok(HealthCheckResult {
+                    status: HealthStatus::Unhealthy,
+                    message: format!("Backend {} is unreachable", target),
                     severity: CheckSeverity::Error,
-                    details: Some(format!("Error: {}", e)),
-                    hostname: hostname.to_string(),
-                    addresses: vec![],
-                    resolution_time: Some(resolution_time),
+                    details: Some(format!("Connection failed: {}", e)),
+                    latency: Some(latency),
                 })
             }
             Err(_) => {
-                Ok(DnsCheckResult {
+                Ok(HealthCheckResult {
                     status: HealthStatus::Error,
-                    message: format!("Timeout resolving {}", hostname),
-                    severity: CheckSeverity::Warning,
-                    details: Some("Resolution timed out after 5 seconds".to_string()),
-                    hostname: hostname.to_string(),
-                    addresses: vec![],
-                    resolution_time: Some(resolution_time),
+                    message: format!("Backend {} timed out", target),
+                    severity: CheckSeverity::Critical,
+                    details: Some("Connection timed out after 5 seconds".to_string()),
+                    latency: Some(latency),
                 })
             }
         }
@@ -98,20 +82,89 @@ pub async fn resolve_hostname(hostname: &str) -> Result<DnsCheckResult> {
     }
 }
 
-/// Resolve multiple hostnames in parallel
-pub async fn resolve_hostnames(hostnames: Vec<String>) -> Result<Vec<DnsCheckResult>> {
+/// Check upstream with HTTP health check
+pub async fn check_upstream_http(
+    backend: &UpstreamBackend,
+    health_check_path: &str,
+) -> Result<HealthCheckResult> {
+    #[cfg(feature = "network")]
+    {
+        use reqwest;
+
+        let url = format!("http://{}:{}{}", backend.host, backend.port, health_check_path);
+        let start = Instant::now();
+
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .map_err(|e| Error::Network(format!("Failed to create client: {}", e)))?;
+
+        match client.get(&url).send().await {
+            Ok(response) => {
+                let latency = start.elapsed();
+                let status_code = response.status();
+
+                let (health_status, severity, message) = if status_code.is_success() {
+                    (
+                        HealthStatus::Healthy,
+                        CheckSeverity::Info,
+                        format!("Backend returned status {}", status_code),
+                    )
+                } else if status_code.is_server_error() {
+                    (
+                        HealthStatus::Unhealthy,
+                        CheckSeverity::Error,
+                        format!("Backend returned error status {}", status_code),
+                    )
+                } else {
+                    (
+                        HealthStatus::Degraded,
+                        CheckSeverity::Warning,
+                        format!("Backend returned status {}", status_code),
+                    )
+                };
+
+                Ok(HealthCheckResult {
+                    status: health_status,
+                    message,
+                    severity,
+                    details: Some(format!("Response time: {:?}, Status: {}", latency, status_code)),
+                    latency: Some(latency),
+                })
+            }
+            Err(e) => {
+                let latency = start.elapsed();
+                Ok(HealthCheckResult {
+                    status: HealthStatus::Unhealthy,
+                    message: format!("HTTP check failed for {}", url),
+                    severity: CheckSeverity::Error,
+                    details: Some(format!("Error: {}", e)),
+                    latency: Some(latency),
+                })
+            }
+        }
+    }
+
+    #[cfg(not(feature = "network"))]
+    {
+        Err(Error::FeatureNotEnabled("network".to_string()))
+    }
+}
+
+/// Check all backends in an upstream group
+pub async fn check_upstream_group(backends: Vec<UpstreamBackend>) -> Result<Vec<HealthCheckResult>> {
     #[cfg(feature = "network")]
     {
         use futures::future::join_all;
 
-        let futures: Vec<_> = hostnames
-            .into_iter()
-            .map(|hostname| resolve_hostname(&hostname))
+        let futures: Vec<_> = backends
+            .iter()
+            .map(|backend| check_upstream_backend(backend))
             .collect();
 
         let results = join_all(futures).await;
 
-        // Convert Vec<Result<DnsCheckResult>> to Result<Vec<DnsCheckResult>>
+        // Convert Vec<Result<HealthCheckResult>> to Result<Vec<HealthCheckResult>>
         results.into_iter().collect()
     }
 
@@ -121,108 +174,40 @@ pub async fn resolve_hostnames(hostnames: Vec<String>) -> Result<Vec<DnsCheckRes
     }
 }
 
-/// Check reverse DNS (PTR record)
-pub async fn reverse_dns_lookup(ip: &str) -> Result<Vec<String>> {
-    #[cfg(feature = "network")]
-    {
-        use trust_dns_resolver::TokioAsyncResolver;
-        use std::net::IpAddr;
-
-        let ip_addr: IpAddr = ip.parse()
-            .map_err(|e| Error::InvalidInput(format!("Invalid IP address: {}", e)))?;
-
-        let resolver = TokioAsyncResolver::tokio_from_system_conf()
-            .map_err(|e| Error::Network(format!("Failed to create resolver: {}", e)))?;
-
-        let response = resolver.reverse_lookup(ip_addr)
-            .await
-            .map_err(|e| Error::Network(format!("Reverse lookup failed: {}", e)))?;
-
-        let names: Vec<String> = response
-            .iter()
-            .map(|name| name.to_string())
-            .collect();
-
-        Ok(names)
+/// Calculate upstream group health percentage
+pub fn calculate_group_health(results: &[HealthCheckResult]) -> f64 {
+    if results.is_empty() {
+        return 0.0;
     }
 
-    #[cfg(not(feature = "network"))]
-    {
-        Err(Error::FeatureNotEnabled("network".to_string()))
-    }
-}
+    let healthy_count = results
+        .iter()
+        .filter(|r| r.status == HealthStatus::Healthy)
+        .count();
 
-/// Validate DNS configuration (check NS records, SOA, etc.)
-pub async fn validate_dns_config(domain: &str) -> Result<DnsValidationResult> {
-    #[cfg(feature = "network")]
-    {
-        use trust_dns_resolver::TokioAsyncResolver;
-
-        let resolver = TokioAsyncResolver::tokio_from_system_conf()
-            .map_err(|e| Error::Network(format!("Failed to create resolver: {}", e)))?;
-
-        // Check NS records
-        let ns_records = resolver.ns_lookup(domain)
-            .await
-            .map(|response| {
-                response.iter()
-                    .map(|ns| ns.to_string())
-                    .collect::<Vec<_>>()
-            })
-            .ok();
-
-        // Check SOA record
-        let soa_record = resolver.soa_lookup(domain)
-            .await
-            .ok()
-            .and_then(|response| response.iter().next().map(|soa| soa.to_string()));
-
-        Ok(DnsValidationResult {
-            domain: domain.to_string(),
-            ns_records,
-            soa_record,
-            is_valid: ns_records.is_some() || soa_record.is_some(),
-        })
-    }
-
-    #[cfg(not(feature = "network"))]
-    {
-        Err(Error::FeatureNotEnabled("network".to_string()))
-    }
-}
-
-/// DNS validation result
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct DnsValidationResult {
-    pub domain: String,
-    pub ns_records: Option<Vec<String>>,
-    pub soa_record: Option<String>,
-    pub is_valid: bool,
+    (healthy_count as f64 / results.len() as f64) * 100.0
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    #[cfg(feature = "network")]
-    async fn test_resolve_localhost() {
-        let result = resolve_hostname("localhost").await;
-        assert!(result.is_ok());
+    #[test]
+    fn test_calculate_group_health() {
+        let results = vec![
+            HealthCheckResult::healthy("OK"),
+            HealthCheckResult::healthy("OK"),
+            HealthCheckResult::unhealthy("Down"),
+        ];
 
-        let check = result.unwrap();
-        assert_eq!(check.status, HealthStatus::Healthy);
-        assert!(!check.addresses.is_empty());
+        let health = calculate_group_health(&results);
+        assert!((health - 66.67).abs() < 0.1);
     }
 
-    #[tokio::test]
-    #[cfg(feature = "network")]
-    async fn test_resolve_invalid() {
-        let result = resolve_hostname("this-domain-definitely-does-not-exist-12345.com").await;
-        assert!(result.is_ok());
-
-        let check = result.unwrap();
-        assert_eq!(check.status, HealthStatus::Error);
+    #[test]
+    fn test_empty_group_health() {
+        let results = vec![];
+        let health = calculate_group_health(&results);
+        assert_eq!(health, 0.0);
     }
 }
