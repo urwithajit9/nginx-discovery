@@ -3,9 +3,6 @@
 //!
 //! Run with: cargo run --example export_formats --features serde
 
-
-
-
 #[cfg(not(feature = "serde"))]
 fn main() {
     eprintln!("❌ This example requires the 'serde' feature");

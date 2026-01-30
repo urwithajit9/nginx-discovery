@@ -3,10 +3,6 @@
 //! Run with:
 //! cargo run --example network_checks --features network
 
-
-
-
-
 #[cfg(not(feature = "network"))]
 fn main() {
     eprintln!("❌ This example requires the 'network' feature");
