@@ -3,6 +3,9 @@
 //!
 //! Run with: cargo run --example export_formats --features serde
 
+use nginx_discovery::Result;
+
+
 #[cfg(not(feature = "serde"))]
 fn main() {
     eprintln!("❌ This example requires the 'serde' feature");
@@ -19,10 +22,10 @@ fn main() {
 }
 
 #[cfg(feature = "serde")]
-fn main() -> anyhow::Result<()> {
+fn main() -> nginx_discovery::Result<()> {
     use nginx_discovery::{
+        export::{export, ExportFormat, ExportOptions, Filter, FilterType},
         parse,
-        export::{export, ExportOptions, ExportFormat, Filter, FilterType},
     };
     use std::io;
 
@@ -73,17 +76,15 @@ http {
         .include_metadata(true)
         .build();
 
-    export(&config, &mut io::stdout(), json_options)?;
+    export(&config, &mut io::stdout(), &json_options)?;
     println!("\n");
 
     // Example 2: Export to YAML
     println!("2. YAML Export:");
     println!("---------------");
-    let yaml_options = ExportOptions::builder()
-        .format(ExportFormat::Yaml)
-        .build();
+    let yaml_options = ExportOptions::builder().format(ExportFormat::Yaml).build();
 
-    export(&config, &mut io::stdout(), yaml_options)?;
+    export(&config, &mut io::stdout(), &yaml_options)?;
     println!("\n");
 
     // Example 3: Export to TOML (if feature enabled)
@@ -140,7 +141,7 @@ http {
         .filter(filter)
         .build();
 
-    export(&config, &mut io::stdout(), filtered_options)?;
+    export(&config, &mut io::stdout(), &filtered_options)?;
     println!("\n");
 
     // Example 6: Compact export
@@ -152,7 +153,7 @@ http {
         .compact(true)
         .build();
 
-    export(&config, &mut io::stdout(), compact_options)?;
+    export(&config, &mut io::stdout(), &compact_options)?;
     println!("\n");
 
     println!("=== Export Examples Complete ===");

@@ -12,7 +12,7 @@ homepage = "https://github.com/urwithajit9/nginx-discovery"
 repository = "https://github.com/urwithajit9/nginx-discovery"
 documentation = "https://docs.rs/nginx-discovery"
 readme = "README.md"
-keywords = ["nginx", "parser", "configuration", "devops", "cli"]
+keywords = ["nginx", "parser", "configuration", "devops", "cli", "devops", "network-health"]
 categories = ["parser-implementations", "command-line-utilities", "development-tools"]
 
 [dependencies]

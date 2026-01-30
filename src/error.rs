@@ -27,7 +27,6 @@ pub enum Error {
         snippet: Option<String>,
         /// Helpful suggestion to fix the error
         help: Option<String>,
-
     },
 
     /// Unexpected end of input while parsing
@@ -99,7 +98,7 @@ pub enum Error {
     #[error("{0}")]
     Custom(String),
 
-        /// Network-related errors
+    /// Network-related errors
     #[error("Network error: {0}")]
     Network(String),
 

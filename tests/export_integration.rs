@@ -1,7 +1,10 @@
 // tests/export_integration.rs
 //! Integration tests for export functionality
 
-use nginx_discovery::{parse, export::{export, ExportOptions, ExportFormat, Filter, FilterType}};
+use nginx_discovery::{
+    export::{export, ExportFormat, ExportOptions, Filter, FilterType},
+    parse,
+};
 use std::io::Cursor;
 
 const SAMPLE_CONFIG: &str = r#"
@@ -50,9 +53,7 @@ fn test_export_json() {
 #[test]
 fn test_export_yaml() {
     let config = parse(SAMPLE_CONFIG).expect("Failed to parse config");
-    let options = ExportOptions::builder()
-        .format(ExportFormat::Yaml)
-        .build();
+    let options = ExportOptions::builder().format(ExportFormat::Yaml).build();
 
     let mut output = Cursor::new(Vec::new());
     export(&config, &mut output, options).expect("Failed to export");
@@ -149,7 +150,13 @@ fn test_format_from_str() {
 
     #[cfg(feature = "export-markdown")]
     {
-        assert_eq!("markdown".parse::<ExportFormat>().unwrap(), ExportFormat::Markdown);
-        assert_eq!("md".parse::<ExportFormat>().unwrap(), ExportFormat::Markdown);
+        assert_eq!(
+            "markdown".parse::<ExportFormat>().unwrap(),
+            ExportFormat::Markdown
+        );
+        assert_eq!(
+            "md".parse::<ExportFormat>().unwrap(),
+            ExportFormat::Markdown
+        );
     }
 }

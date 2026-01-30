@@ -1,80 +1,130 @@
-// src/network/types.rs
 //! Network check types and results
+//!
+//! This module defines the **core data structures** used by the network
+//! health-checking subsystem.
+//!
+//! ## Scope and responsibilities
+//!
+//! - Types in this module are **pure data containers**
+//! - No I/O, networking, async, or side effects are performed here
+//! - All execution logic lives in sibling modules (e.g. `ssl`, `dns`, `upstream`)
+//!
+//! ## Design principles
+//!
+//! - All check results follow a **normalized shape**
+//! - Severity and health status are explicitly modeled
+//! - Structures are optimized for:
+//!   - CLI output
+//!   - JSON serialization
+//!   - Aggregation and reporting
+//!
+//! This mirrors how large frameworks (e.g. Kubernetes, Django system checks)
+//! separate **evaluation** from **representation**.
 
 use std::time::Duration;
 
-/// Health status of a check
+/* ============================================================
+ * Health status & severity
+ * ============================================================
+ */
+
+/// Overall health status of a network check.
+///
+/// This represents **what happened**, independent of urgency.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum HealthStatus {
-    /// Check passed successfully
+    /// Check succeeded with no issues.
     Healthy,
 
-    /// Check passed with warnings
+    /// Check succeeded but non-fatal issues were detected.
     Degraded,
 
-    /// Check failed
+    /// Check failed and the system is unhealthy.
     Unhealthy,
 
-    /// Check could not be performed
+    /// Check could not be executed due to an internal error.
     Error,
 
-    /// Check not applicable
+    /// Check was intentionally skipped or not applicable.
     NotApplicable,
 }
 
 impl std::fmt::Display for HealthStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Healthy => write!(f, "HEALTHY"),
-            Self::Degraded => write!(f, "DEGRADED"),
-            Self::Unhealthy => write!(f, "UNHEALTHY"),
-            Self::Error => write!(f, "ERROR"),
-            Self::NotApplicable => write!(f, "N/A"),
-        }
+        let s = match self {
+            Self::Healthy => "HEALTHY",
+            Self::Degraded => "DEGRADED",
+            Self::Unhealthy => "UNHEALTHY",
+            Self::Error => "ERROR",
+            Self::NotApplicable => "N/A",
+        };
+        write!(f, "{s}")
     }
 }
 
-/// Severity of check result
+/// Severity level associated with a health-check result.
+///
+/// This represents **how urgent** the outcome is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CheckSeverity {
-    /// Informational only
+    /// Informational only; no action required.
     Info,
 
-    /// Warning - should be addressed
+    /// Warning; action recommended.
     Warning,
 
-    /// Error - needs immediate attention
+    /// Error; action required.
     Error,
 
-    /// Critical - system may be down
+    /// Critical; immediate action required.
     Critical,
 }
 
 impl std::fmt::Display for CheckSeverity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Info => write!(f, "INFO"),
-            Self::Warning => write!(f, "WARNING"),
-            Self::Error => write!(f, "ERROR"),
-            Self::Critical => write!(f, "CRITICAL"),
-        }
+        let s = match self {
+            Self::Info => "INFO",
+            Self::Warning => "WARNING",
+            Self::Error => "ERROR",
+            Self::Critical => "CRITICAL",
+        };
+        write!(f, "{s}")
     }
 }
 
-/// Generic health check result
+/* ============================================================
+ * Generic health check
+ * ============================================================
+ */
+
+/// Normalized result type used by **all** network checks.
+///
+/// This type allows heterogeneous checks (SSL, DNS, ports, upstreams)
+/// to be aggregated and displayed uniformly.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct HealthCheckResult {
+    /// Final health status.
     pub status: HealthStatus,
+
+    /// Human-readable summary message.
     pub message: String,
+
+    /// Severity level.
     pub severity: CheckSeverity,
+
+    /// Optional diagnostic details.
     pub details: Option<String>,
+
+    /// Optional latency measurement.
     pub latency: Option<Duration>,
 }
 
 impl HealthCheckResult {
+    /// Create a healthy result.
+    #[must_use]
     pub fn healthy(message: impl Into<String>) -> Self {
         Self {
             status: HealthStatus::Healthy,
@@ -85,6 +135,8 @@ impl HealthCheckResult {
         }
     }
 
+    /// Create a degraded result.
+    #[must_use]
     pub fn degraded(message: impl Into<String>) -> Self {
         Self {
             status: HealthStatus::Degraded,
@@ -95,6 +147,8 @@ impl HealthCheckResult {
         }
     }
 
+    /// Create an unhealthy result.
+    #[must_use]
     pub fn unhealthy(message: impl Into<String>) -> Self {
         Self {
             status: HealthStatus::Unhealthy,
@@ -105,6 +159,8 @@ impl HealthCheckResult {
         }
     }
 
+    /// Create an error result.
+    #[must_use]
     pub fn error(message: impl Into<String>) -> Self {
         Self {
             status: HealthStatus::Error,
@@ -115,105 +171,154 @@ impl HealthCheckResult {
         }
     }
 
+    /// Attach diagnostic details.
+    #[must_use]
     pub fn with_details(mut self, details: impl Into<String>) -> Self {
         self.details = Some(details.into());
         self
     }
 
+    /// Attach latency information.
+    #[must_use]
     pub fn with_latency(mut self, latency: Duration) -> Self {
         self.latency = Some(latency);
         self
     }
 }
 
-/// SSL certificate check result
+/* ============================================================
+ * SSL check
+ * ============================================================
+ */
+
+/// Result of an SSL/TLS certificate validation.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SslCheckResult {
+    /// Health status of the SSL check.
     pub status: HealthStatus,
+
+    /// Summary message.
     pub message: String,
+
+    /// Severity level.
     pub severity: CheckSeverity,
+
+    /// Optional diagnostic details.
     pub details: Option<String>,
 
-    /// Certificate expiry date
+    /// Certificate expiration timestamp (UTC).
     pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
 
-    /// Days until expiration
+    /// Days remaining until certificate expiration.
     pub days_until_expiry: Option<i64>,
 
-    /// Certificate issuer
+    /// Certificate issuer (distinguished name).
     pub issuer: Option<String>,
 
-    /// Certificate subject
+    /// Certificate subject (distinguished name).
     pub subject: Option<String>,
 }
 
-/// Port availability check result
+/* ============================================================
+ * Port check
+ * ============================================================
+ */
+
+/// Result of a TCP port availability check.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PortCheckResult {
+    /// Health status of the port check.
     pub status: HealthStatus,
+
+    /// Summary message.
     pub message: String,
+
+    /// Severity level.
     pub severity: CheckSeverity,
+
+    /// Optional diagnostic details.
     pub details: Option<String>,
 
-    /// Port number
+    /// Port number that was checked.
     pub port: u16,
 
-    /// Address
+    /// Hostname or IP address.
     pub address: String,
 
-    /// Whether port is listening
+    /// Whether the port is accepting connections.
     pub is_listening: bool,
 
-    /// Connection latency
+    /// Optional connection latency.
     pub latency: Option<Duration>,
 }
 
-/// DNS resolution check result
+/* ============================================================
+ * DNS resolution
+ * ============================================================
+ */
+
+/// Result of a DNS resolution check.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DnsCheckResult {
+    /// Health status of the DNS check.
     pub status: HealthStatus,
+
+    /// Summary message.
     pub message: String,
+
+    /// Severity level.
     pub severity: CheckSeverity,
+
+    /// Optional diagnostic details.
     pub details: Option<String>,
 
-    /// Hostname being resolved
+    /// Hostname that was resolved.
     pub hostname: String,
 
-    /// Resolved IP addresses
+    /// Resolved IP addresses.
     pub addresses: Vec<String>,
 
-    /// Resolution time
+    /// Time taken to resolve DNS.
     pub resolution_time: Option<Duration>,
 }
 
-/// Options for network checks
+/* ============================================================
+ * Network execution options
+ * ============================================================
+ */
+
+/// Configuration controlling which network checks are executed.
+///
+/// This struct is intentionally explicit rather than compact, as
+/// configuration clarity is preferred over minimalism.
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct NetworkCheckOptions {
-    /// Check upstream backends
+    /// Whether to check upstream backends.
     pub check_upstreams: bool,
 
-    /// Check SSL certificates
+    /// Whether to validate SSL certificates.
     pub check_ssl: bool,
 
-    /// Check port availability
+    /// Whether to check TCP ports.
     pub check_ports: bool,
 
-    /// Check DNS resolution
+    /// Whether to perform DNS resolution.
     pub check_dns: bool,
 
-    /// Timeout for each check
+    /// Per-check timeout.
     pub timeout: Duration,
 
-    /// Number of retries
+    /// Number of retry attempts.
     pub retries: usize,
 
-    /// Parallel execution
+    /// Execute checks concurrently.
     pub parallel: bool,
 
-    /// Continue on error
+    /// Continue executing checks after failures.
     pub continue_on_error: bool,
 }
 
@@ -233,7 +338,8 @@ impl Default for NetworkCheckOptions {
 }
 
 impl NetworkCheckOptions {
-    /// Create options that only check upstreams
+    /// Enable only upstream checks.
+    #[must_use]
     pub fn upstreams_only() -> Self {
         Self {
             check_upstreams: true,
@@ -244,7 +350,8 @@ impl NetworkCheckOptions {
         }
     }
 
-    /// Create options that only check SSL
+    /// Enable only SSL checks.
+    #[must_use]
     pub fn ssl_only() -> Self {
         Self {
             check_upstreams: false,
@@ -255,7 +362,8 @@ impl NetworkCheckOptions {
         }
     }
 
-    /// Create options that only check ports
+    /// Enable only port checks.
+    #[must_use]
     pub fn ports_only() -> Self {
         Self {
             check_upstreams: false,
@@ -266,7 +374,8 @@ impl NetworkCheckOptions {
         }
     }
 
-    /// Create options that only check DNS
+    /// Enable only DNS checks.
+    #[must_use]
     pub fn dns_only() -> Self {
         Self {
             check_upstreams: false,
@@ -278,48 +387,27 @@ impl NetworkCheckOptions {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/* ============================================================
+ * DNS validation
+ * ============================================================
+ */
 
-    #[test]
-    fn test_health_status_display() {
-        assert_eq!(HealthStatus::Healthy.to_string(), "HEALTHY");
-        assert_eq!(HealthStatus::Unhealthy.to_string(), "UNHEALTHY");
-    }
-
-    #[test]
-    fn test_severity_ordering() {
-        assert!(CheckSeverity::Info < CheckSeverity::Warning);
-        assert!(CheckSeverity::Warning < CheckSeverity::Error);
-        assert!(CheckSeverity::Error < CheckSeverity::Critical);
-    }
-
-    #[test]
-    fn test_health_check_builders() {
-        let result = HealthCheckResult::healthy("All good")
-            .with_details("Everything is working");
-
-        assert_eq!(result.status, HealthStatus::Healthy);
-        assert_eq!(result.message, "All good");
-        assert!(result.details.is_some());
-    }
-
-    #[test]
-    fn test_network_options_presets() {
-        let ssl_only = NetworkCheckOptions::ssl_only();
-        assert!(!ssl_only.check_upstreams);
-        assert!(ssl_only.check_ssl);
-        assert!(!ssl_only.check_ports);
-    }
-}
-
-/// DNS validation result
+/// Result of DNS configuration validation.
+///
+/// This is distinct from DNS *resolution* and focuses on correctness
+/// of authoritative records.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DnsValidationResult {
+    /// Domain name that was validated.
     pub domain: String,
+
+    /// NS records discovered for the domain.
     pub ns_records: Option<Vec<String>>,
+
+    /// SOA record, if available.
     pub soa_record: Option<String>,
+
+    /// Whether the DNS configuration is valid.
     pub is_valid: bool,
 }

@@ -1,77 +1,63 @@
-// src/network/dns.rs
-//! DNS resolution checking
+//! Port availability checking
+//!
+//! Provides utilities for checking whether TCP ports are listening,
+//! scanning multiple ports concurrently, and finding available ports.
 
-use super::types::{DnsCheckResult, HealthStatus, CheckSeverity, DnsValidationResult};
+use super::types::{CheckSeverity, HealthStatus, PortCheckResult};
 use crate::Result;
 use std::time::{Duration, Instant};
 
-/// Resolve hostname to IP addresses
-pub async fn resolve_hostname(hostname: &str) -> Result<DnsCheckResult> {
+/// Check if a port is available (listening).
+///
+/// Performs a TCP connection attempt to the given address and port.
+///
+/// # Errors
+///
+/// Returns an error if the `network` feature is disabled.
+pub async fn check_port(address: &str, port: u16) -> Result<PortCheckResult> {
     #[cfg(feature = "network")]
     {
-        use tokio::net::lookup_host;
+        use tokio::net::TcpStream;
         use tokio::time::timeout;
 
+        let target = format!("{address}:{port}");
         let start = Instant::now();
 
-        // Try to resolve with timeout
-        let resolve_result = timeout(
-            Duration::from_secs(5),
-            lookup_host(format!("{}:0", hostname))
-        ).await;
+        let connect_result = timeout(Duration::from_secs(5), TcpStream::connect(&target)).await;
 
-        let resolution_time = start.elapsed();
+        let latency = start.elapsed();
 
-        match resolve_result {
-            Ok(Ok(addrs)) => {
-                let addresses: Vec<String> = addrs
-                    .map(|addr| addr.ip().to_string())
-                    .collect();
-
-                if addresses.is_empty() {
-                    Ok(DnsCheckResult {
-                        status: HealthStatus::Unhealthy,
-                        message: format!("No addresses found for {}", hostname),
-                        severity: CheckSeverity::Warning,
-                        details: None,
-                        hostname: hostname.to_string(),
-                        addresses,
-                        resolution_time: Some(resolution_time),
-                    })
-                } else {
-                    Ok(DnsCheckResult {
-                        status: HealthStatus::Healthy,
-                        message: format!("Resolved {} to {} address(es)", hostname, addresses.len()),
-                        severity: CheckSeverity::Info,
-                        details: Some(format!("Addresses: {}", addresses.join(", "))),
-                        hostname: hostname.to_string(),
-                        addresses,
-                        resolution_time: Some(resolution_time),
-                    })
-                }
-            }
-            Ok(Err(e)) => {
-                Ok(DnsCheckResult {
-                    status: HealthStatus::Error,
-                    message: format!("Failed to resolve {}", hostname),
-                    severity: CheckSeverity::Error,
-                    details: Some(format!("Error: {}", e)),
-                    hostname: hostname.to_string(),
-                    addresses: vec![],
-                    resolution_time: Some(resolution_time),
-                })
-            }
-            Err(_) => {
-                Ok(DnsCheckResult {
-                    status: HealthStatus::Error,
-                    message: format!("Timeout resolving {}", hostname),
-                    severity: CheckSeverity::Warning,
-                    details: Some("Resolution timed out after 5 seconds".to_string()),
-                    hostname: hostname.to_string(),
-                    addresses: vec![],
-                    resolution_time: Some(resolution_time),
-                })
-            }
+        match connect_result {
+            Ok(Ok(_)) => Ok(PortCheckResult {
+                status: HealthStatus::Healthy,
+                message: format!("Port {port} is listening on {address}"),
+                severity: CheckSeverity::Info,
+                details: Some(format!("Connection established in {latency:?}")),
+                port,
+                address: address.to_string(),
+                is_listening: true,
+                latency: Some(latency),
+            }),
+            Ok(Err(e)) => Ok(PortCheckResult {
+                status: HealthStatus::Unhealthy,
+                message: format!("Port {port} is not listening on {address}"),
+                severity: CheckSeverity::Error,
+                details: Some(format!("Connection failed: {e}")),
+                port,
+                address: address.to_string(),
+                is_listening: false,
+                latency: Some(latency),
+            }),
+            Err(_) => Ok(PortCheckResult {
+                status: HealthStatus::Error,
+                message: format!("Timeout checking port {port} on {address}"),
+                severity: CheckSeverity::Warning,
+                details: Some("Connection timed out after 5 seconds".to_string()),
+                port,
+                address: address.to_string(),
+                is_listening: false,
+                latency: Some(latency),
+            }),
         }
     }
 
@@ -82,23 +68,26 @@ pub async fn resolve_hostname(hostname: &str) -> Result<DnsCheckResult> {
     }
 }
 
-/// Resolve multiple hostnames in parallel - FIXED BORROWING
-pub async fn resolve_hostnames(hostnames: Vec<String>) -> Result<Vec<DnsCheckResult>> {
+/// Check multiple ports concurrently.
+///
+/// # Errors
+///
+/// Returns an error if the `network` feature is disabled.
+pub async fn check_ports(addresses: Vec<(String, u16)>) -> Result<Vec<PortCheckResult>> {
     #[cfg(feature = "network")]
     {
         use futures::future::join_all;
 
-        // Fix: Clone hostname before borrowing
-        let futures: Vec<_> = hostnames
+        let futures: Vec<_> = addresses
             .iter()
-            .map(|hostname| {
-                let hostname_clone = hostname.clone();
-                async move { resolve_hostname(&hostname_clone).await }
+            .map(|(addr, port)| {
+                let addr = addr.clone();
+                let port = *port;
+                async move { check_port(&addr, port).await }
             })
             .collect();
 
         let results = join_all(futures).await;
-
         results.into_iter().collect()
     }
 
@@ -109,65 +98,38 @@ pub async fn resolve_hostnames(hostnames: Vec<String>) -> Result<Vec<DnsCheckRes
     }
 }
 
-/// Check reverse DNS (PTR record) - Simplified version
-pub async fn reverse_dns_lookup(_ip: &str) -> Result<Vec<String>> {
+/// Check if a local port is currently in use.
+///
+/// # Errors
+///
+/// Returns an error if the underlying port check fails.
+pub async fn is_port_in_use(port: u16) -> Result<bool> {
+    match check_port("127.0.0.1", port).await {
+        Ok(result) => Ok(result.is_listening),
+        Err(_) => Ok(false),
+    }
+}
+
+/// Find the first available port within a range.
+///
+/// # Errors
+///
+/// Returns an error if the `network` feature is disabled
+/// or if a port check fails.
+pub async fn find_available_port(start: u16, end: u16) -> Result<Option<u16>> {
     #[cfg(feature = "network")]
     {
-        // Simplified - not fully implemented yet
-        Ok(vec![])
+        for port in start..=end {
+            if !is_port_in_use(port).await? {
+                return Ok(Some(port));
+            }
+        }
+        Ok(None)
     }
 
     #[cfg(not(feature = "network"))]
     {
         use crate::Error;
         Err(Error::FeatureNotEnabled("network".to_string()))
-    }
-}
-
-/// Validate DNS configuration - Simplified version
-pub async fn validate_dns_config(domain: &str) -> Result<DnsValidationResult> {
-    #[cfg(feature = "network")]
-    {
-        // Simplified version - just check if domain resolves
-        let result = resolve_hostname(domain).await?;
-
-        Ok(DnsValidationResult {
-            domain: domain.to_string(),
-            ns_records: None,
-            soa_record: None,
-            is_valid: !result.addresses.is_empty(),
-        })
-    }
-
-    #[cfg(not(feature = "network"))]
-    {
-        use crate::Error;
-        Err(Error::FeatureNotEnabled("network".to_string()))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    #[cfg(feature = "network")]
-    async fn test_resolve_localhost() {
-        let result = resolve_hostname("localhost").await;
-        assert!(result.is_ok());
-
-        let check = result.unwrap();
-        assert_eq!(check.status, HealthStatus::Healthy);
-        assert!(!check.addresses.is_empty());
-    }
-
-    #[tokio::test]
-    #[cfg(feature = "network")]
-    async fn test_resolve_invalid() {
-        let result = resolve_hostname("this-domain-definitely-does-not-exist-12345.com").await;
-        assert!(result.is_ok());
-
-        let check = result.unwrap();
-        assert_eq!(check.status, HealthStatus::Error);
     }
 }
