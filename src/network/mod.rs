@@ -67,6 +67,9 @@ pub use upstream::UpstreamBackend;
 // Imports
 // -----------------------------------------------------------------------------
 
+pub use crate::network::dns::reverse_dns_lookup;
+pub use crate::network::dns::validate_dns_config;
+pub use crate::network::ssl::check_ssl_url;
 use crate::{ast::Config, Result};
 
 // -----------------------------------------------------------------------------

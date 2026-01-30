@@ -3,9 +3,6 @@
 //!
 //! Run with: cargo run --example export_formats --features serde
 
-use nginx_discovery::Result;
-
-
 #[cfg(not(feature = "serde"))]
 fn main() {
     eprintln!("❌ This example requires the 'serde' feature");
@@ -97,7 +94,7 @@ http {
             .pretty(true)
             .build();
 
-        export(&config, &mut io::stdout(), toml_options)?;
+        export(&config, &mut io::stdout(), &toml_options)?;
         println!("\n");
     }
 
@@ -119,7 +116,7 @@ http {
             .include_metadata(true)
             .build();
 
-        export(&config, &mut io::stdout(), md_options)?;
+        export(&config, &mut io::stdout(), &md_options)?;
         println!("\n");
     }
 

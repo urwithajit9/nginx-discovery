@@ -26,7 +26,7 @@
 //!     .pretty(true)
 //!     .build();
 //!
-//! export(&config, &mut io::stdout(), options)?;
+//! export(&config, &mut io::stdout(), &options)?;
 //! # Ok::<(), nginx_discovery::Error>(())
 //! ```
 //!
@@ -43,7 +43,7 @@
 //!     .filter(filter)
 //!     .build();
 //!
-//! export(&config, &mut io::stdout(), options)?;
+//! export(&config, &mut io::stdout(), &options)?;
 //! # Ok::<(), nginx_discovery::Error>(())
 //! ```
 
@@ -99,7 +99,7 @@ use std::io::Write;
 ///     .pretty(true)
 ///     .build();
 ///
-/// export(&config, &mut file, options)?;
+/// export(&config, &mut file, &options)?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn export<W: Write>(config: &Config, writer: &mut W, options: &ExportOptions) -> Result<()> {
