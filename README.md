@@ -1,342 +1,161 @@
 # nginx-discovery
 
+Parse, analyze, and extract information from NGINX configurations with powerful export and health checking capabilities.
+
 [![Crates.io](https://img.shields.io/crates/v/nginx-discovery.svg)](https://crates.io/crates/nginx-discovery)
 [![Documentation](https://docs.rs/nginx-discovery/badge.svg)](https://docs.rs/nginx-discovery)
-[![License](https://img.shields.io/crates/l/nginx-discovery.svg)](https://github.com/urwithajit9/nginx-discovery#license)
+[![License](https://img.shields.io/crates/l/nginx-discovery.svg)](LICENSE)
 [![Build Status](https://github.com/urwithajit9/nginx-discovery/workflows/CI/badge.svg)](https://github.com/urwithajit9/nginx-discovery/actions)
 
-**Discover and parse NGINX configurations with ease.**
+## Features
 
-A Rust library for parsing, analyzing, and extracting information from NGINX configuration files. Perfect for building tools that need to understand NGINX configs programmatically.
+- 🔍 **Parse NGINX configs** - Parse any NGINX configuration file
+- 📊 **Multiple Export Formats** - Export to JSON, YAML, TOML, or Markdown
+- 🔌 **Export Filtering** - Filter by server name, port, SSL status, or directive
+- 🌐 **Network Health Checks** - Check port availability, DNS resolution, SSL certificates, and upstream backends
+- 🐚 **Shell Completions** - Generate completions for Bash, Zsh, Fish, PowerShell, Elvish
+- 🚀 **High Performance** - Fast parsing with minimal memory footprint
+- 📦 **Library & CLI** - Use as a library or standalone CLI tool
 
-## ✨ Features
+## Installation
 
-- 🔍 **Parse NGINX Configs** - Full support for directives, blocks, and nested structures
-- 🖥️ **Server Block Extraction** - Extract and analyze server blocks with listen directives and locations
-- 📊 **Extract Information** - High-level extractors for logs, servers, locations, and more
-- 🎯 **Type-Safe** - Strongly-typed AST and configuration objects
-- ⚡ **Fast** - Efficient lexer and parser with zero-copy where possible
-- 🛠️ **Great Errors** - Detailed error messages with source locations and suggestions
-- 📚 **Well Documented** - Comprehensive docs and examples
-
-## 🚀 Quick Start
+### As a Library
 
 Add to your `Cargo.toml`:
 ```toml
 [dependencies]
-nginx-discovery = "0.2"
+nginx-discovery = "0.4.0"
+
+# With optional features
+nginx-discovery = { version = "0.4.0", features = ["serde", "network", "export-all"] }
 ```
 
-### Parse a Configuration
-```rust
-use nginx_discovery::parse;
-
-let config = r#"
-server {
-    listen 80;
-    server_name example.com;
-
-    location / {
-        root /var/www/html;
-    }
-}
-"#;
-
-let parsed = parse(config)?;
-println!("Found {} directives", parsed.directives.len());
+### As a CLI Tool
+```bash
+cargo install nginx-discovery --features cli
 ```
 
-### Extract Servers (New in v0.2.0)
+## Quick Start
+
+### Library Usage
 ```rust
-use nginx_discovery::NginxDiscovery;
+use nginx_discovery::{parse, extract::servers};
 
-let config = r#"
-server {
-    listen 80;
-    listen 443 ssl;
-    server_name example.com www.example.com;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Parse configuration
+    let config = parse(r#"
+        http {
+            server {
+                listen 80;
+                server_name example.com;
+                location / {
+                    proxy_pass http://backend;
+                }
+            }
+        }
+    "#)?;
 
-    location / {
-        root /var/www/html;
-    }
+    // Extract servers
+    let servers = servers(&config)?;
+    println!("Found {} servers", servers.len());
 
-    location /api {
-        proxy_pass http://backend:3000;
-    }
-}
-"#;
-
-let discovery = NginxDiscovery::from_config_text(config)?;
-
-// Get all servers
-let servers = discovery.servers();
-println!("Found {} servers", servers.len());
-
-// Get SSL servers only
-let ssl_servers = discovery.ssl_servers();
-println!("SSL servers: {}", ssl_servers.len());
-
-// Get all listening ports
-let ports = discovery.listening_ports();
-println!("Listening on ports: {:?}", ports);
-
-// Get proxy locations
-let proxies = discovery.proxy_locations();
-for location in proxies {
-    println!("Proxy: {} -> {:?}", location.path, location.proxy_pass);
+    Ok(())
 }
 ```
 
-### Extract Access Logs
+### Export to Different Formats
 ```rust
-use nginx_discovery::{parse, extract};
+use nginx_discovery::{parse, export::{export, ExportOptions, ExportFormat}};
+use std::io;
 
-let config = parse(config_text)?;
-let logs = extract::access_logs(&config)?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = parse(nginx_config)?;
 
-for log in logs {
-    println!("Log: {}", log.path.display());
-    println!("Format: {:?}", log.format_name);
-    println!("Context: {:?}", log.context);
+    // Export to JSON
+    let options = ExportOptions::builder()
+        .format(ExportFormat::Json)
+        .pretty(true)
+        .build();
+
+    export(&config, &mut io::stdout(), options)?;
+    Ok(())
 }
 ```
 
-### Extract Log Formats
+### Network Health Checks
 ```rust
-use nginx_discovery::{parse, extract};
+use nginx_discovery::network::{check_port, resolve_hostname};
 
-let config = parse(config_text)?;
-let formats = extract::log_formats(&config)?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Check if port is available
+    let result = check_port("127.0.0.1", 80).await?;
+    println!("Port status: {}", result.status);
 
-for format in formats {
-    println!("Format: {}", format.name());
-    println!("Variables: {:?}", format.variables());
+    // Resolve hostname
+    let result = resolve_hostname("example.com").await?;
+    println!("Addresses: {:?}", result.addresses);
+
+    Ok(())
 }
 ```
 
-## 📖 Examples
-
-Check out the [`examples/`](examples/) directory:
-
-- [`extract_servers.rs`](examples/extract_servers.rs) - Extract server blocks and analyze configurations
-- [`extract_logs.rs`](examples/extract_logs.rs) - Extract log configurations
-- [`parse_config.rs`](examples/parse_config.rs) - Parse NGINX configuration
-- [`lex_config.rs`](examples/lex_config.rs) - Tokenize NGINX configs
-- [`test_nginx_detection.rs`](examples/test_nginx_detection.rs) - Test NGINX system detection (requires `system` feature)
-
-Run an example:
+### CLI Usage
 ```bash
-cargo run --example extract_servers
-```
-
-Run the system detection example:
-```bash
-cargo run --example test_nginx_detection --features system
-```
-
-## 🎯 Use Cases
-
-- **Log Analysis Tools** - Extract log paths and formats for Fluentd, Vector, Logstash
-- **Configuration Management** - Validate and analyze NGINX configs
-- **Monitoring Setup** - Discover upstreams and servers for monitoring
-- **Migration Tools** - Parse existing configs for migration planning
-- **Documentation** - Auto-generate documentation from configs
-- **Security Auditing** - Analyze SSL/TLS and security settings
-- **Service Discovery** - Extract server names, ports, and proxy configurations
-
-## 🏗️ Architecture
-
-The library is organized in layers:
-```
-┌─────────────────────────────────────┐
-│   High-Level API (NginxDiscovery)  │  ← Convenient discovery methods
-├─────────────────────────────────────┤
-│   Extractors (extract::*)          │  ← Extract servers, logs, etc.
-├─────────────────────────────────────┤
-│   Parser (parse)                    │  ← Convert tokens to AST
-├─────────────────────────────────────┤
-│   Lexer (tokenize)                  │  ← Convert text to tokens
-├─────────────────────────────────────┤
-│   AST Types                         │  ← Type-safe representation
-└─────────────────────────────────────┘
-```
-
-### Low-Level: Lexer
-```rust
-use nginx_discovery::parser::Lexer;
-
-let mut lexer = Lexer::new("server { listen 80; }");
-let tokens = lexer.tokenize()?;
-```
-
-### Mid-Level: Parser
-```rust
-use nginx_discovery::parse;
-
-let config = parse("server { listen 80; }")?;
-for directive in &config.directives {
-    println!("{}", directive.name());
-}
-```
-
-### High-Level: Extractors
-```rust
-use nginx_discovery::{parse, extract};
-
-let config = parse(config_text)?;
-let servers = extract::servers(&config)?;
-let logs = extract::access_logs(&config)?;
-```
-
-### Highest-Level: Discovery API
-```rust
-use nginx_discovery::NginxDiscovery;
-
-let discovery = NginxDiscovery::from_config_text(config)?;
-let ssl_servers = discovery.ssl_servers();
-let ports = discovery.listening_ports();
-```
-
-## 📚 Documentation
-
-- [API Documentation](https://docs.rs/nginx-discovery)
-- [Examples](examples/)
-- [Contributing Guide](CONTRIBUTING.md)
-- [Changelog](CHANGELOG.md)
-
-## 🧪 Testing
-
-The library has comprehensive test coverage:
-```bash
-# Run all tests
-cargo test --all-features
-
-# Run with output
-cargo test -- --nocapture
-
-# Run specific test
-cargo test test_name
-```
-
-## 🔧 Feature Flags
-```toml
-[dependencies]
-nginx-discovery = { version = "0.2", features = ["serde"] }
-```
-
-Available features:
-
-- `serde` - Serialize/deserialize AST types
-- `system` (default) - System interaction utilities
-
-## 📊 Supported NGINX Directives
-
-Currently supports:
-
-- ✅ Simple directives: `user nginx;`
-- ✅ Block directives: `server { ... }`, `location { ... }`
-- ✅ Nested blocks: `http { server { location { } } }`
-- ✅ Quoted strings: `"value"` and `'value'`
-- ✅ Variables: `$host`, `${variable}`
-- ✅ Numbers: `80`, `443`, `1024`
-- ✅ Comments: `# comment`
-- ✅ Log formats and access logs
-- ✅ **Server blocks** with listen directives and locations (v0.2.0)
-- ✅ **Listen directives** with SSL, HTTP/2, HTTP/3 options (v0.2.0)
-- ✅ **Location blocks** with all modifiers (=, ^~, ~, ~*) (v0.2.0)
-- ✅ **Proxy detection** and static file serving (v0.2.0)
-
-## 🗺️ Roadmap
-
-## 🗺️ Roadmap
-
-### v0.3.0 (Released)
-- ✅ CLI Phase 1 implementation
-- ✅ Parse, extract, export, doctor commands
-- ✅ SSL/TLS analysis command
-- ✅ Security analysis command
-- ✅ Interactive mode
-- ✅ Enhanced extract commands
-
-### v0.4.0 (Planned)
-- [ ] Export markdown - Documentation generation
-- [ ] Export fluentd - Fluentd config generation
-- [ ] Network checks in doctor
-- [ ] Shell completions
-- [ ] Enhanced security analysis
-
-### v1.0.0 (Future)
-- [ ] Complete NGINX directive support
-- [ ] Configuration validation
-- [ ] Config transformation tools
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-### Development
-```bash
-git clone https://github.com/urwithajit9/nginx-discovery.git
-cd nginx-discovery
-
-# Run tests
-cargo test --all-features
-
-# Run examples
-cargo run --example extract_servers
-
-# Format code
-cargo fmt
-
-# Run linter
-cargo clippy --all-features -- -D warnings
-```
-
-## 🖥️ Command-Line Interface
-
-nginx-discovery includes a powerful CLI tool for analyzing NGINX configurations.
-
-### Installation
-```bash
-cargo install --path . --features cli
-```
-
-### Quick Start
-```bash
-# Run health check
-sudo nginx-discover doctor
-
-# Parse configuration
-sudo nginx-discover parse --tree
-
-# Extract servers
-sudo nginx-discover extract servers --ssl-only
+# Parse and display configuration
+nginx-discover parse /etc/nginx/nginx.conf
 
 # Export to JSON
-sudo nginx-discover export json --pretty
+nginx-discover export --format json output.json
+
+# Export to Markdown report
+nginx-discover export --format markdown --features export-markdown report.md
+
+# Filter by server name
+nginx-discover export --filter "server_name=*.example.com" output.json
+
+# Check network health
+nginx-discover network check-all
+
+# Check specific ports
+nginx-discover network check-ports
+
+# Generate shell completions
+nginx-discover completions bash > ~/.bash_completion.d/nginx-discover
 ```
 
-### Documentation
+## Feature Flags
 
-- [Complete CLI Guide](CLI_GUIDE.md) - Comprehensive documentation
-- [Quick Reference](CLI_QUICKREF.md) - Command cheat sheet
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `serde` | Enable serialization support (JSON, YAML) | ✅ |
+| `system` | Enable system interaction (file finding) | ✅ |
+| `export-toml` | Enable TOML export format | ❌ |
+| `export-markdown` | Enable Markdown export format | ❌ |
+| `export-all` | Enable all export formats | ❌ |
+| `network` | Enable network health checking | ❌ |
+| `cli` | Enable CLI binary | ❌ |
+| `full` | Enable all features | ❌ |
 
-### Example Usage
-```bash
-# Generate infrastructure inventory
-sudo nginx-discover extract servers -f json -o servers.json
-sudo nginx-discover extract logs --with-formats -f json -o logs.json
+## Examples
 
-# Security audit
-sudo nginx-discover extract servers --ssl-only
-sudo nginx-discover extract locations --proxy-only
+See the [examples/](examples/) directory for more examples:
 
-# Service discovery
-sudo nginx-discover extract locations --proxy-only -f json | \
-    jq '.[] | {server, path, upstream: .proxy_pass}'
-```
+- [export_formats.rs](examples/export_formats.rs) - Export to different formats
+- [network_checks.rs](examples/network_checks.rs) - Network health checking
 
-## 📝 License
+## Documentation
+
+- [API Documentation](https://docs.rs/nginx-discovery)
+- [Changelog](CHANGELOG.md)
+- [Contributing Guide](CONTRIBUTING.md)
+
+## Requirements
+
+- Rust 1.70.0 or later
+- For network features: tokio runtime
+
+## License
 
 Licensed under either of:
 
@@ -345,22 +164,10 @@ Licensed under either of:
 
 at your option.
 
-### Contribution
+## Contributing
 
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Acknowledgments
 
-Built with ❤️ in Rust.
-
-Special thanks to the Rust community for excellent parser libraries and documentation.
-
-## 📬 Contact
-
-- **Author**: Ajit Kumar
-- **GitHub**: [@urwithajit9](https://github.com/urwithajit9)
-- **Issues**: [GitHub Issues](https://github.com/urwithajit9/nginx-discovery/issues)
-
----
-
-**Star ⭐ this repo if you find it useful!**
+Built with ❤️ for the NGINX community.

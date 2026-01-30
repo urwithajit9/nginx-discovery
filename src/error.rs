@@ -97,6 +97,41 @@ pub enum Error {
     /// Custom error
     #[error("{0}")]
     Custom(String),
+
+    /// Network-related errors
+    #[error("Network error: {0}")]
+    Network(String),
+
+    /// Invalid input provided
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
+    /// Feature not yet implemented
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
+    /// Required feature not enabled
+    #[error("Feature '{0}' not enabled. Enable it in Cargo.toml")]
+    FeatureNotEnabled(String),
+}
+
+#[cfg(feature = "export-toml")]
+impl From<toml::ser::Error> for Error {
+    fn from(err: toml::ser::Error) -> Self {
+        Self::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            err.to_string(),
+        ))
+    }
+}
+
+impl From<std::fmt::Error> for Error {
+    fn from(err: std::fmt::Error) -> Self {
+        Self::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            err.to_string(),
+        ))
+    }
 }
 
 impl Error {

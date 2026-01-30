@@ -5,11 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-01-29
 
+### Added
+- **Enhanced Export System**
+  - JSON export (pretty and compact modes)
+  - YAML export
+  - TOML export (with `export-toml` feature)
+  - Markdown export for documentation (with `export-markdown` feature)
+  - Export filtering by server name, port, SSL status, directive
+  - Builder pattern for export options
 
+- **Network Health Checking**
+  - Port availability checking with TCP connections
+  - DNS resolution and validation
+  - SSL certificate checking (basic file validation)
+  - Upstream backend health checks (TCP and HTTP)
+  - Batch health check operations with parallel execution
+  - Configurable timeouts and retries
 
+- **Shell Completions**
+  - Generate completions for Bash, Zsh, Fish, PowerShell, and Elvish
+  - Auto-detection of current shell
+  - Installation helper commands
 
-## [Unreleased]
+- **New Feature Flags**
+  - `export-toml` - Enable TOML export format
+  - `export-markdown` - Enable Markdown export format
+  - `export-all` - Enable all export formats
+  - `network` - Enable network health checking features
+  - `full` - Enable all features
+
+### Changed
+- Updated minimum Rust version to 1.70.0
+- Improved error handling with new error variants
+- Enhanced CLI with new commands
+
+### Dependencies Added
+- `toml = "0.8"` (optional, for TOML export)
+- `chrono = "0.4"` (optional, for timestamps)
+- `tokio = "1.0"` (optional, for async network operations)
+- `reqwest = "0.11"` (optional, for HTTP health checks)
+- `futures = "0.3"` (optional, for parallel operations)
+- `x509-parser = "0.15"` (optional, for SSL certificate parsing)
+- `trust-dns-resolver = "0.23"` (optional, for DNS operations)
+- `clap_complete = "4.5"` (optional, for shell completions)
+
+### Fixed
+- Improved async handling in network operations
+- Better error messages and error handling
+- Memory safety improvements in async code
 
 ## [0.3.0] - 2026-01-28
 
