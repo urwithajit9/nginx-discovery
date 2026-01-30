@@ -43,7 +43,7 @@ fn test_export_json() {
         .build();
 
     let mut output = Cursor::new(Vec::new());
-    export(&config, &mut output, options).expect("Failed to export");
+    export(&config, &mut output, &options).expect("Failed to export");
 
     let json_str = String::from_utf8(output.into_inner()).unwrap();
     assert!(!json_str.is_empty());
@@ -56,7 +56,7 @@ fn test_export_yaml() {
     let options = ExportOptions::builder().format(ExportFormat::Yaml).build();
 
     let mut output = Cursor::new(Vec::new());
-    export(&config, &mut output, options).expect("Failed to export");
+    export(&config, &mut output, &options).expect("Failed to export");
 
     let yaml_str = String::from_utf8(output.into_inner()).unwrap();
     assert!(!yaml_str.is_empty());
@@ -72,7 +72,7 @@ fn test_export_toml() {
         .build();
 
     let mut output = Cursor::new(Vec::new());
-    export(&config, &mut output, options).expect("Failed to export");
+    export(&config, &mut output, &options).expect("Failed to export");
 
     let toml_str = String::from_utf8(output.into_inner()).unwrap();
     assert!(!toml_str.is_empty());
@@ -88,7 +88,7 @@ fn test_export_markdown() {
         .build();
 
     let mut output = Cursor::new(Vec::new());
-    export(&config, &mut output, options).expect("Failed to export");
+    export(&config, &mut output, &options).expect("Failed to export");
 
     let md_str = String::from_utf8(output.into_inner()).unwrap();
     assert!(!md_str.is_empty());
@@ -107,7 +107,7 @@ fn test_export_with_filter() {
         .build();
 
     let mut output = Cursor::new(Vec::new());
-    export(&config, &mut output, options).expect("Failed to export");
+    export(&config, &mut output, &options).expect("Failed to export");
 
     let json_str = String::from_utf8(output.into_inner()).unwrap();
     assert!(!json_str.is_empty());
